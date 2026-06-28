@@ -1,0 +1,56 @@
+/* Required layout for FocusScroll */
+
+.focus-scroll-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.focus-scroll {
+  height: 78vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  padding-block: 19vh;
+  -webkit-overflow-scrolling: touch;
+}
+
+.focus-scroll__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  padding: 0.75rem 0.25rem;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+.focus-scroll__content {
+  width: 100%;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+}
+
+/* Optional: hide scrollbar */
+.focus-scroll.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.focus-scroll.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Demo card styles (customize or remove in your project) */
+
+.focus-scroll-card {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1.5rem;
+  background: #fff;
+  padding: 2rem;
+  box-shadow: none;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.focus-scroll__item.is-active .focus-scroll-card {
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 24px 60px -24px rgba(20, 24, 40, 0.28);
+}

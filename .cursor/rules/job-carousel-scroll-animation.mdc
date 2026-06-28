@@ -1,0 +1,36 @@
+---
+description: Do not modify job card scroll scale animation unless the user explicitly asks
+alwaysApply: true
+---
+
+# Job carousel scroll animation — hands off
+
+**Never change the job cards scroll/scale animation unless the user explicitly asks to change it.**
+
+This includes indirect changes while fixing layout, nav alignment, chips, or other UI work.
+
+## Protected files
+
+- `components/job-carousel.tsx` — scroll listener, scale math, transform styles, transform origin
+- `standalone/focus-scroll/` — if re-integrated
+- `app/globals.css` — only the focus-scroll / carousel animation utilities, if present
+
+## Do not change without explicit request
+
+- `MIN_SCALE`, `MOBILE_BREAKPOINT`, `range`, scale interpolation
+- `transform`, `transform-origin`, `will-change` on card wrappers
+- `window.innerWidth` vs `container.clientWidth` mobile detection
+- Switching between React state scales vs direct DOM updates (FocusScroll)
+- Scroll snap, padding-block, or opacity/saturate tied to scroll focus
+
+## Allowed without asking
+
+- Category chips, empty states, filtering, copy
+- Adding props that do not affect scroll/scale behavior
+- Import/path refactors that leave animation logic identical
+
+## When layout work might affect cards
+
+Fix alignment via page shell, nav, or shared layout classes — **not** by changing transform origin, scale logic, or card wrapper animation classes.
+
+If animation and layout truly conflict, stop and ask the user instead of changing animation code.
