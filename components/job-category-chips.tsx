@@ -1,15 +1,12 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import {
+  JOB_FEED_CATEGORIES,
+  type JobFeedCategory,
+} from "@/lib/job-feed"
 
-export type JobFeedCategory = "all" | "today" | "recommended" | "cv-match"
-
-const CATEGORIES: { id: JobFeedCategory; label: string }[] = [
-  { id: "all", label: "ყველა" },
-  { id: "today", label: "დღევანდელი" },
-  { id: "recommended", label: "შენთვის რეკომენდებული" },
-  { id: "cv-match", label: "შენი CV ერგება" },
-]
+export type { JobFeedCategory }
 
 interface JobCategoryChipsProps {
   value: JobFeedCategory
@@ -19,7 +16,7 @@ interface JobCategoryChipsProps {
 export function JobCategoryChips({ value, onChange }: JobCategoryChipsProps) {
   return (
     <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto sm:gap-2.5">
-      {CATEGORIES.map(({ id, label }) => {
+      {JOB_FEED_CATEGORIES.map(({ id, label }) => {
         const active = value === id
         return (
           <button

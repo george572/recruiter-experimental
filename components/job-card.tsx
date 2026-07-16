@@ -32,31 +32,31 @@ export function JobCard({ job, active }: JobCardProps) {
   return (
     <article
       aria-current={active ? "true" : undefined}
-      className={`flex w-full min-w-0 flex-col rounded-3xl bg-white p-6 md:p-7 lg:shadow-none ${
+      className={`flex w-full min-w-0 flex-col rounded-3xl bg-white p-5 md:p-6 lg:shadow-none ${
         active
           ? "shadow-[0_4px_16px_-8px_rgba(20,24,40,0.1)]"
           : "shadow-[0_2px_12px_-6px_rgba(20,24,40,0.07)]"
       }`}
     >
-      <div className="flex flex-col gap-3.5 sm:gap-4">
+      <div className="flex flex-col gap-3 sm:gap-3.5">
         {/* Top row */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary sm:h-12 sm:w-12">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary sm:h-11 sm:w-11">
               <Image
                 src={job.logo || "/placeholder.svg"}
                 alt={`${job.company} ლოგო`}
-                width={56}
-                height={56}
+                width={44}
+                height={44}
                 className="h-full w-full object-cover"
               />
             </div>
             <div className="min-w-0 flex flex-col">
-              <span className="truncate text-[13px] font-medium text-muted-foreground sm:text-sm">{job.company}</span>
+              <span className="truncate text-xs font-medium text-muted-foreground sm:text-[13px]">{job.company}</span>
               {job.hrActive && (
-                <span className="mt-1 text-xs font-medium text-emerald-600">HR აქტიურია</span>
+                <span className="mt-0.5 text-[11px] font-medium text-emerald-600">HR აქტიურია</span>
               )}
-              <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground sm:text-xs">
+              <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground sm:text-[11px]">
                 <MapPin className="h-3 w-3 shrink-0" />
                 <span className="truncate">{job.location}</span>
               </div>
@@ -64,39 +64,41 @@ export function JobCard({ job, active }: JobCardProps) {
           </div>
           <button
             aria-label="ვაკანსიის შენახვა"
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground sm:h-10 sm:w-10"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground sm:h-9 sm:w-9"
           >
-            <Bookmark className="h-4 w-4" />
+            <Bookmark className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {/* Title */}
-        <h3 className="text-[17px] font-semibold leading-7 text-foreground text-balance sm:text-xl md:text-2xl">
+        <h3 className="text-[15px] font-semibold leading-6 text-foreground text-balance sm:text-base md:text-lg">
           {job.title}
         </h3>
 
         {/* Meta badges */}
-        <div className="flex flex-wrap gap-2">
-          <Badge icon={<Briefcase className="h-3.5 w-3.5" />}>{LABELS[job.type] ?? job.type}</Badge>
-          <Badge icon={<MapPin className="h-3.5 w-3.5" />}>{LABELS[job.workplace] ?? job.workplace}</Badge>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge icon={<Briefcase className="h-3 w-3" />}>{LABELS[job.type] ?? job.type}</Badge>
+          <Badge icon={<MapPin className="h-3 w-3" />}>{LABELS[job.workplace] ?? job.workplace}</Badge>
           <Badge>{LABELS[job.level] ?? job.level}</Badge>
           <Badge>{LABELS[job.category] ?? job.category}</Badge>
         </div>
 
-        <p className="text-[13px] leading-6 text-muted-foreground sm:text-sm">{job.description}</p>
+        <p className="text-xs leading-5 text-muted-foreground sm:text-[13px] sm:leading-5">
+          {job.description}
+        </p>
       </div>
 
       {/* Bottom row */}
-      <div className="mt-4 flex flex-col gap-3 pt-1 sm:mt-5 sm:gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-muted-foreground sm:text-xs">ხელფასი</span>
-          <span className="text-base font-semibold text-foreground sm:text-lg">
+      <div className="mt-3.5 flex flex-col gap-3 pt-1 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-muted-foreground sm:text-[11px]">ხელფასი</span>
+          <span className="text-sm font-semibold text-foreground sm:text-base">
             {job.currency}
             {job.salaryMin.toLocaleString()} – {job.currency}
             {job.salaryMax.toLocaleString()}
-            <span className="ml-1 text-xs font-normal text-muted-foreground sm:text-sm">/თვე</span>
+            <span className="ml-1 text-[11px] font-normal text-muted-foreground sm:text-xs">/თვე</span>
           </span>
-          <div className="mt-1 grid grid-cols-1 gap-1.5 text-[11px] text-muted-foreground sm:flex sm:items-center sm:gap-4 sm:text-xs">
+          <div className="mt-1 grid grid-cols-1 gap-1 text-[10px] text-muted-foreground sm:flex sm:items-center sm:gap-3 sm:text-[11px]">
             <span className="flex items-center gap-1.5">
               <Clock className="h-3 w-3" />
               {job.postedDaysAgo} დღის წინ
@@ -120,7 +122,7 @@ export function JobCard({ job, active }: JobCardProps) {
 
 function Badge({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-foreground sm:px-3 sm:py-1.5 sm:text-xs">
+    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-foreground sm:px-2.5 sm:py-1 sm:text-[11px]">
       {icon}
       {children}
     </span>

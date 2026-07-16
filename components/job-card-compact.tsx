@@ -42,10 +42,10 @@ export function JobCardCompact({ job, active = false, onClick }: JobCardCompactP
         }
       }}
       aria-current={active ? "true" : undefined}
-      className={`flex h-[120px] w-full cursor-pointer items-center gap-4 rounded-2xl border px-4 transition-colors ${
+      className={`flex h-[120px] w-full cursor-pointer items-center gap-4 rounded-2xl border bg-white px-4 transition-colors ${
         active
-          ? "border-primary/20 bg-secondary/50 shadow-[0_2px_12px_-6px_rgba(20,24,40,0.08)]"
-          : "border-border/60 bg-secondary/30 hover:border-border hover:bg-secondary/50"
+          ? "border-primary/20 shadow-[0_2px_12px_-6px_rgba(20,24,40,0.08)]"
+          : "border-border/60 hover:border-border"
       }`}
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-secondary">

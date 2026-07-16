@@ -3,28 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Job } from "@/lib/jobs"
 import { JobCard } from "@/components/job-card"
+import { JobCategoryChips } from "@/components/job-category-chips"
 import {
-  JobCategoryChips,
+  filterJobsByFeedCategory,
+  getFeedSectionLabel,
   type JobFeedCategory,
-} from "@/components/job-category-chips"
+} from "@/lib/job-feed"
 import { jobColumnClass } from "@/lib/layout"
 import { cn } from "@/lib/utils"
 
 interface JobCarouselProps {
   jobs: Job[]
-}
-
-function filterJobsByFeedCategory(jobs: Job[], category: JobFeedCategory): Job[] {
-  switch (category) {
-    case "recommended":
-      return jobs.filter((job) => job.hrActive || job.postedDaysAgo <= 3)
-    case "cv-match":
-      return jobs.filter((job) => job.level === "Mid" || job.level === "Senior" || job.level === "Lead")
-    case "today":
-      return jobs.filter((job) => job.postedDaysAgo <= 1)
-    default:
-      return jobs
-  }
 }
 
 const MIN_SCALE = 0.9
@@ -121,8 +110,11 @@ export function JobCarousel({ jobs }: JobCarouselProps) {
   }
 
   return (
-    <div className={cn(jobColumnClass, "flex min-h-0 flex-1 flex-col gap-4 lg:gap-5")}>
+    <div className={cn(jobColumnClass, "flex min-h-0 flex-1 flex-col gap-3 lg:gap-4")}>
       <JobCategoryChips value={feedCategory} onChange={setFeedCategory} />
+      <h2 className="shrink-0 text-lg font-semibold tracking-[-0.02em] text-foreground sm:text-xl">
+        {getFeedSectionLabel(feedCategory)}
+      </h2>
       {visibleJobs.length === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-border px-4 text-center">
           <p className="text-base font-medium text-foreground">ამ კატეგორიაში ვაკანსია ჯერ არ არის</p>
