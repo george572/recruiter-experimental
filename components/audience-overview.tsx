@@ -81,7 +81,7 @@ const profileCards = [
 const selectorButtonBase =
   "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium leading-none transition-colors"
 const selectorButtonActive =
-  "border-primary bg-primary text-primary-foreground"
+  "border-border bg-secondary text-foreground"
 const selectorButtonIdle =
   "border-border/60 bg-card text-foreground hover:border-border hover:bg-secondary/50"
 
@@ -559,6 +559,30 @@ export function AudienceOverview() {
                   role="tablist"
                   aria-label="ვაკანსიების წყაროები"
                 >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedSource === null}
+                    onClick={() => setSelectedSource(null)}
+                    className={cn(
+                      selectorButtonBase,
+                      selectedSource === null
+                        ? selectorButtonActive
+                        : selectorButtonIdle
+                    )}
+                  >
+                    <span>ყველა</span>
+                    <span
+                      className={cn(
+                        "tabular-nums text-[11px]",
+                        selectedSource === null
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {JOBS.length}
+                    </span>
+                  </button>
                   {JOB_SOURCES.map((source) => {
                     const active = selectedSource === source.id
                     const count = JOBS.filter((job) => job.source === source.id).length
@@ -568,11 +592,7 @@ export function AudienceOverview() {
                         type="button"
                         role="tab"
                         aria-selected={active}
-                        onClick={() =>
-                          setSelectedSource((prev) =>
-                            prev === source.id ? null : source.id
-                          )
-                        }
+                        onClick={() => setSelectedSource(source.id)}
                         className={cn(
                           selectorButtonBase,
                           active ? selectorButtonActive : selectorButtonIdle
@@ -581,7 +601,7 @@ export function AudienceOverview() {
                         <span
                           className={cn(
                             "flex size-5 shrink-0 items-center justify-center overflow-hidden rounded",
-                            active ? "bg-primary-foreground/15" : "bg-secondary"
+                            active ? "bg-card" : "bg-secondary"
                           )}
                         >
                           <Image
@@ -593,14 +613,7 @@ export function AudienceOverview() {
                           />
                         </span>
                         <span>{source.label}</span>
-                        <span
-                          className={cn(
-                            "tabular-nums text-[11px]",
-                            active
-                              ? "text-primary-foreground/75"
-                              : "text-muted-foreground"
-                          )}
-                        >
+                        <span className="tabular-nums text-[11px] text-muted-foreground">
                           {count}
                         </span>
                       </button>
