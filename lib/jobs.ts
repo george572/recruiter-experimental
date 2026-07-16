@@ -7,13 +7,69 @@ export type JobSource =
   | "awork.ge"
   | "samushao.ge"
   | "unijobs.ge"
+  | "myjobs.ge"
+  | "hr.gov.ge"
+  | "v.dk.ge"
+  | "teacherjobs.ge"
+  | "jobs.ss.ge"
+  | "joob.ge"
 
-export const JOB_SOURCES: { id: JobSource; label: string }[] = [
-  { id: "jobs.ge", label: "JOBS.GE" },
-  { id: "hr.ge", label: "HR.GE" },
-  { id: "awork.ge", label: "AWORK.GE" },
-  { id: "samushao.ge", label: "SAMUSHAO.GE" },
-  { id: "unijobs.ge", label: "UNIJOBS.GE" },
+export const JOB_SOURCES: { id: JobSource; label: string; logo: string }[] = [
+  {
+    id: "jobs.ge",
+    label: "JOBS.GE",
+    logo: "https://www.google.com/s2/favicons?domain=jobs.ge&sz=64",
+  },
+  {
+    id: "hr.ge",
+    label: "HR.GE",
+    logo: "https://www.google.com/s2/favicons?domain=hr.ge&sz=64",
+  },
+  {
+    id: "awork.ge",
+    label: "AWORK.GE",
+    logo: "https://www.google.com/s2/favicons?domain=awork.ge&sz=64",
+  },
+  {
+    id: "samushao.ge",
+    label: "SAMUSHAO.GE",
+    logo: "https://www.google.com/s2/favicons?domain=samushao.ge&sz=64",
+  },
+  {
+    id: "unijobs.ge",
+    label: "UNIJOBS.GE",
+    logo: "https://www.google.com/s2/favicons?domain=unijobs.ge&sz=64",
+  },
+  {
+    id: "myjobs.ge",
+    label: "MYJOBS.GE",
+    logo: "https://www.google.com/s2/favicons?domain=myjobs.ge&sz=64",
+  },
+  {
+    id: "hr.gov.ge",
+    label: "HR.GOV.GE",
+    logo: "https://www.google.com/s2/favicons?domain=hr.gov.ge&sz=64",
+  },
+  {
+    id: "v.dk.ge",
+    label: "V.DK.GE",
+    logo: "https://www.google.com/s2/favicons?domain=v.dk.ge&sz=64",
+  },
+  {
+    id: "teacherjobs.ge",
+    label: "TEACHERJOBS.GE",
+    logo: "https://www.google.com/s2/favicons?domain=teacherjobs.ge&sz=64",
+  },
+  {
+    id: "jobs.ss.ge",
+    label: "JOBS.SS.GE",
+    logo: "https://www.google.com/s2/favicons?domain=jobs.ss.ge&sz=64",
+  },
+  {
+    id: "joob.ge",
+    label: "JOOB.GE",
+    logo: "https://www.google.com/s2/favicons?domain=joob.ge&sz=64",
+  },
 ]
 
 export interface JobComment {
