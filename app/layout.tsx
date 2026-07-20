@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import '@fontsource/google-sans/georgian.css'
+import '@fontsource/google-sans/latin.css'
 import { ProductionAnalytics } from '@/components/production-analytics'
 import './globals.css'
 

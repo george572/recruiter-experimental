@@ -6,9 +6,9 @@ export function AppHeader() {
     <header className="flex shrink-0 items-center justify-between gap-4 pb-5">
       <Link
         href="/"
-        className="flex h-8 items-center justify-center rounded-md bg-primary px-3 transition-opacity hover:opacity-90"
+        className="inline-flex items-center transition-opacity hover:opacity-70"
       >
-        <span className="text-sm font-bold text-primary-foreground">Recruiter.ge</span>
+        <span className="font-sans text-lg font-semibold text-black">Recruiter.ge</span>
       </Link>
 
       <div className="flex items-center gap-2 sm:gap-3">
