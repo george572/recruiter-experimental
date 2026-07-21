@@ -369,7 +369,7 @@ function buildJobsParams(options: ScrapedJobsQuery = {}) {
   const params = new URLSearchParams()
   params.set("limit", String(limit))
   params.set("offset", String(offset))
-  params.set("order", options.order || "newest")
+  params.set("order", options.order || "round_robin")
   if (options.source) params.set("source", options.source)
   if (options.q) params.set("q", options.q)
   if (options.categoryId != null && Number.isFinite(options.categoryId)) {

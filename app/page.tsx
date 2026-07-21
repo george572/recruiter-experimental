@@ -70,7 +70,7 @@ export default async function Page() {
 
   try {
     const page = await fetchScrapedJobs(
-      { limit: INITIAL_PAGE_SIZE, offset: 0, order: "newest" },
+      { limit: INITIAL_PAGE_SIZE, offset: 0, order: "round_robin" },
       categoryNames
     )
     if (page.jobs.length > 0) {

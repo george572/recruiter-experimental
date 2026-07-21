@@ -76,7 +76,7 @@ export async function loadListingData(
       {
         limit: PAGE_SIZE,
         offset: 0,
-        order: "newest",
+        order: "round_robin",
         categoryId: categoryId ?? undefined,
         city: opts.city,
       },
