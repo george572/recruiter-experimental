@@ -15,6 +15,7 @@ import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { CompanyLogo } from "@/components/company-logo"
+import { JobDescriptionBody } from "@/components/job-description-body"
 
 const THEME_KEY = "audience-theme"
 const EXPIRY_WINDOW_DAYS = 30
@@ -203,6 +204,7 @@ export function JobDetail({
         <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 bg-background px-5 py-3.5 sm:px-6 lg:px-10">
           <Link
             href="/"
+            scroll={false}
             className="relative z-10 inline-flex shrink-0 items-center transition-opacity hover:opacity-70"
           >
             <span className="font-sans text-lg font-semibold text-black dark:text-white">
@@ -289,16 +291,10 @@ export function JobDetail({
 
                 <section className={cn("min-w-0 p-5 sm:p-7", panelClass)}>
                   <h2 className="text-[13.5px] font-semibold text-foreground">აღწერა</h2>
-                  {job.description?.trim() ? (
-                    <p className="mt-3 text-[14px] leading-7 break-words text-foreground/85 [overflow-wrap:anywhere]">
-                      {job.description}
-                    </p>
-                  ) : (
-                    <p className="mt-3 text-[14px] leading-7 text-muted-foreground">
-                      სრული აღწერა ხელმისაწვდომია წყაროს გვერდზე — გახსენი განაცხადის
-                      ღილაკით.
-                    </p>
-                  )}
+                  <JobDescriptionBody
+                    html={job.descriptionHtml}
+                    text={job.description}
+                  />
                 </section>
               </div>
 

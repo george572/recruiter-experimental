@@ -103,16 +103,89 @@ function decodeHtmlEntities(text: string): string {
     })
 }
 
-function stripHtml(html: string | null | undefined): string {
+/** Collapse to a single line — cards / meta only. */
+export function stripHtml(html: string | null | undefined): string {
+  return htmlToFormattedPlainText(html).replace(/\s+/g, " ").trim()
+}
+
+/**
+ * Convert scraped HTML into plain text while keeping paragraph / line breaks.
+ * Used for cards, SEO, and as a fallback when HTML sanitization yields nothing.
+ */
+export function htmlToFormattedPlainText(html: string | null | undefined): string {
   if (!html) return ""
-  return decodeHtmlEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-  )
-    .replace(/\s+/g, " ")
+  let s = String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    // Soft / hard breaks
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*hr\s*\/?\s*>/gi, "\n\n")
+    // Block boundaries → newlines
+    .replace(/<\s*\/\s*(p|div|section|article|header|footer|tr|blockquote|h[1-6])\s*>/gi, "\n\n")
+    .replace(/<\s*(p|div|section|article|header|footer|tr|blockquote|h[1-6])(\s[^>]*)?>/gi, "\n")
+    .replace(/<\s*\/\s*(ul|ol)\s*>/gi, "\n")
+    .replace(/<\s*(ul|ol)(\s[^>]*)?>/gi, "\n")
+    .replace(/<\s*li(\s[^>]*)?>/gi, "\n• ")
+    .replace(/<\s*\/\s*li\s*>/gi, "")
+    // Drop remaining tags
+    .replace(/<[^>]+>/g, "")
+
+  s = decodeHtmlEntities(s)
+  return s
+    .split("\n")
+    .map((line) => line.replace(/[ \t\f\v]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim()
+}
+
+const ALLOWED_DESC_TAGS = new Set([
+  "br",
+  "b",
+  "strong",
+  "i",
+  "em",
+  "u",
+  "p",
+  "ul",
+  "ol",
+  "li",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+])
+
+/**
+ * Allowlist-sanitize scraped description HTML for safe rendering on the detail page.
+ * Keeps bold / lists / line breaks; strips scripts, styles, attrs, and unknown tags.
+ */
+export function sanitizeDescriptionHtml(
+  html: string | null | undefined
+): string {
+  if (!html) return ""
+  let s = String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    // Kill inline event handlers / js urls before tag pass
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi, "")
+
+  s = s.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g, (full, rawTag: string) => {
+    const tag = rawTag.toLowerCase()
+    if (!ALLOWED_DESC_TAGS.has(tag)) return ""
+    if (tag === "br") return "<br />"
+    return full.startsWith("</") ? `</${tag}>` : `<${tag}>`
+  })
+
+  // Normalize empty noise
+  s = s
+    .replace(/(?:<br\s*\/?\s*>\s*){3,}/gi, "<br /><br />")
+    .replace(/(<p>\s*<\/p>)+/gi, "")
+    .trim()
+
+  return s
 }
 
 function mapWorkplace(value: string | null | undefined): Workplace {
@@ -177,7 +250,9 @@ export function mapScrapedJobToJob(
   const title = (row.title || "ვაკანსია").trim()
   const company = (row.company || row.business_name || "კომპანია").trim()
   const location = (row.city || row.address || "საქართველო").trim()
-  const description = stripHtml(row.description_html) || row.salary_text || ""
+  const descriptionHtml = sanitizeDescriptionHtml(row.description_html) || null
+  const description =
+    htmlToFormattedPlainText(row.description_html) || row.salary_text || ""
   const rawLogo = (row.company_logo_url && row.company_logo_url.trim()) || ""
   // Never fall back to the jobs.ge/hr.ge/… favicon — every card looks the same.
   const logo = isGenericBoardLogo(rawLogo, source) ? "" : rawLogo
@@ -218,6 +293,7 @@ export function mapScrapedJobToJob(
     currency,
     postedDaysAgo: daysAgoFrom(row.scraped_at || row.created_at),
     description,
+    descriptionHtml,
     tags,
     applicants: Number(row.click_count) || 0,
     sourceUrl: row.source_url || null,

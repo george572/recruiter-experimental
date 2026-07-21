@@ -100,6 +100,8 @@ export interface Job {
   currency: string
   postedDaysAgo: number
   description: string
+  /** Sanitized HTML for the detail page (line breaks, bold, lists). */
+  descriptionHtml?: string | null
   tags: string[]
   applicants: number
   hrActive?: boolean

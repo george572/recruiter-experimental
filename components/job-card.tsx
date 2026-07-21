@@ -80,8 +80,8 @@ export function JobCard({ job, active }: JobCardProps) {
           <Badge>{LABELS[job.category] ?? job.category}</Badge>
         </div>
 
-        <p className="text-xs leading-5 text-muted-foreground sm:text-[13px] sm:leading-5">
-          {job.description}
+        <p className="line-clamp-3 text-xs leading-5 text-muted-foreground sm:text-[13px] sm:leading-5">
+          {job.description.replace(/\s+/g, " ").trim()}
         </p>
       </div>
 
