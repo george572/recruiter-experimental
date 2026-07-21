@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     limit: Math.min(Math.max(Number(searchParams.get("limit") || 50), 1), 200),
     offset: Math.max(Number(searchParams.get("offset") || 0), 0),
     order:
-      searchParams.get("order") === "newest" ? "newest" : "round_robin",
+      searchParams.get("order") === "round_robin" ? "round_robin" : "newest",
     city: searchParams.get("city") || undefined,
     employmentType: searchParams.get("employment_type") || undefined,
   }

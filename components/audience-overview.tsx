@@ -635,7 +635,7 @@ export function AudienceOverview({
         const params = new URLSearchParams()
         params.set("limit", String(PAGE_SIZE))
         params.set("offset", String(offset))
-        params.set("order", "round_robin")
+        params.set("order", "newest")
 
         if (selectedSource) {
           const apiSource = JOB_SOURCE_TO_API[selectedSource]
