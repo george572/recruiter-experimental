@@ -159,6 +159,7 @@ const ALLOWED_DESC_TAGS = new Set([
 /**
  * Allowlist-sanitize scraped description HTML for safe rendering on the detail page.
  * Keeps bold / lists / line breaks; strips scripts, styles, attrs, and unknown tags.
+ * Also turns jobs.ge "** item" lines into real list items.
  */
 export function sanitizeDescriptionHtml(
   html: string | null | undefined
@@ -168,7 +169,6 @@ export function sanitizeDescriptionHtml(
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "")
-    // Kill inline event handlers / js urls before tag pass
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
     .replace(/(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi, "")
 
@@ -179,13 +179,38 @@ export function sanitizeDescriptionHtml(
     return full.startsWith("</") ? `</${tag}>` : `<${tag}>`
   })
 
-  // Normalize empty noise
+  // jobs.ge often uses "** text" as bullet markers inside <br>-separated lines
+  s = s.replace(
+    /(?:^|<br\s*\/?\s*>)\s*\*\*\s+/gi,
+    (match) => `${match.startsWith("<br") ? "<br />" : ""}• `
+  )
+
   s = s
     .replace(/(?:<br\s*\/?\s*>\s*){3,}/gi, "<br /><br />")
     .replace(/(<p>\s*<\/p>)+/gi, "")
     .trim()
 
   return s
+}
+
+/** Pull a company logo URL out of description/listing HTML when present. */
+export function extractJobsGeLogoFromHtml(
+  html: string | null | undefined
+): string | null {
+  if (!html) return null
+  const matches = [
+    ...String(html).matchAll(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi),
+  ]
+  const urls: string[] = []
+  for (const m of matches) {
+    let src = (m[1] || "").trim()
+    if (!src) continue
+    if (src.startsWith("//")) src = `https:${src}`
+    else if (src.startsWith("/")) src = `https://jobs.ge${src}`
+    if (/\/data\/clients\//i.test(src) && !/banner/i.test(src)) urls.push(src)
+  }
+  const full = urls.find((u) => /\/data\/clients\/logo\//i.test(u))
+  return full || urls[0] || null
 }
 
 function mapWorkplace(value: string | null | undefined): Workplace {
@@ -232,6 +257,15 @@ function isGenericBoardLogo(url: string | null | undefined, source: JobSource): 
   return Boolean(boardLogo && u === boardLogo)
 }
 
+function absolutizeMaybeJobsGe(url: string): string {
+  const u = url.trim()
+  if (!u) return ""
+  if (/^https?:\/\//i.test(u)) return u
+  if (u.startsWith("//")) return `https:${u}`
+  if (u.startsWith("/")) return `https://jobs.ge${u}`
+  return u
+}
+
 export function getSamushaoApiBaseUrl() {
   return (
     process.env.SAMUSHAO_API_BASE ||
@@ -253,9 +287,14 @@ export function mapScrapedJobToJob(
   const descriptionHtml = sanitizeDescriptionHtml(row.description_html) || null
   const description =
     htmlToFormattedPlainText(row.description_html) || row.salary_text || ""
-  const rawLogo = (row.company_logo_url && row.company_logo_url.trim()) || ""
+  const rawLogo =
+    (row.company_logo_url && row.company_logo_url.trim()) ||
+    extractJobsGeLogoFromHtml(row.description_html) ||
+    ""
   // Never fall back to the jobs.ge/hr.ge/… favicon — every card looks the same.
-  const logo = isGenericBoardLogo(rawLogo, source) ? "" : rawLogo
+  const logo = isGenericBoardLogo(rawLogo, source)
+    ? ""
+    : absolutizeMaybeJobsGe(rawLogo)
 
   const salaryMin = Math.round(Number(row.salary_min) || 0)
   const salaryMax = Math.round(Number(row.salary_max) || salaryMin || 0)
