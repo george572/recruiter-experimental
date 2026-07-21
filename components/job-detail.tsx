@@ -88,9 +88,11 @@ function MetaPill({ children }: { children: ReactNode }) {
 
 function FactRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border/50 py-3 last:border-b-0">
-      <span className="text-[12.5px] text-muted-foreground">{label}</span>
-      <span className="text-right text-[13px] font-medium text-foreground">{value}</span>
+    <div className="flex items-baseline justify-between gap-3 border-b border-border/50 py-3 last:border-b-0 sm:gap-4">
+      <span className="shrink-0 text-[12.5px] text-muted-foreground">{label}</span>
+      <span className="min-w-0 break-words text-right text-[13px] font-medium text-foreground">
+        {value}
+      </span>
     </div>
   )
 }
@@ -187,13 +189,18 @@ export function JobDetail({
   }, [dark, themeReady])
 
   return (
-    <div className={cn("relative h-full min-h-0 w-full overflow-hidden", dark && "dark")}>
+    <div
+      className={cn(
+        "relative h-full min-h-0 w-full min-w-0 overflow-hidden",
+        dark && "dark"
+      )}
+    >
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute left-1/2 top-0 h-[420px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.04] blur-3xl" />
         <div className="absolute bottom-0 right-0 h-[320px] w-[480px] translate-x-1/4 translate-y-1/4 rounded-full bg-primary/[0.03] blur-3xl" />
       </div>
 
-      <div className="flex h-full min-h-0 w-full flex-col bg-background">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-background">
         <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 bg-background px-5 py-3.5 sm:px-6 lg:px-10">
           <a
             href="/"
@@ -218,13 +225,13 @@ export function JobDetail({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
-          <div className="mx-auto w-full max-w-5xl px-5 pb-10 pt-4 sm:px-6 lg:px-10 lg:pb-12 lg:pt-5">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6">
-              <div className="space-y-4">
-                <section className={cn("p-6 sm:p-7", panelClass)}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex min-w-0 items-start gap-3.5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto no-scrollbar">
+          <div className="mx-auto w-full min-w-0 max-w-5xl px-5 pb-10 pt-4 sm:px-6 lg:px-10 lg:pb-12 lg:pt-5">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6">
+              <div className="min-w-0 space-y-4">
+                <section className={cn("min-w-0 p-5 sm:p-7", panelClass)}>
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
                       <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary sm:size-14">
                         <Image
                           src={job.logo || "/placeholder.svg"}
@@ -235,8 +242,10 @@ export function JobDetail({
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] text-muted-foreground">{job.company}</p>
-                        <h1 className="mt-1 text-xl font-semibold leading-snug text-foreground text-balance sm:text-2xl">
+                        <p className="truncate text-[13px] text-muted-foreground">
+                          {job.company}
+                        </p>
+                        <h1 className="mt-1 text-xl font-semibold leading-snug break-words text-foreground text-balance sm:text-2xl">
                           {job.title}
                         </h1>
                         {job.hrActive ? (
@@ -258,11 +267,11 @@ export function JobDetail({
 
                   <div className="mt-5 flex flex-wrap gap-1.5">
                     <MetaPill>
-                      <MapPin className="size-3" strokeWidth={1.75} />
+                      <MapPin className="size-3 shrink-0" strokeWidth={1.75} />
                       {job.location}
                     </MetaPill>
                     <MetaPill>
-                      <Briefcase className="size-3" strokeWidth={1.75} />
+                      <Briefcase className="size-3 shrink-0" strokeWidth={1.75} />
                       {LABELS[job.type] ?? job.type}
                     </MetaPill>
                     <MetaPill>{LABELS[job.workplace] ?? job.workplace}</MetaPill>
@@ -274,7 +283,7 @@ export function JobDetail({
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                       ხელფასი
                     </p>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-foreground sm:text-xl">
+                    <p className="mt-1 break-words text-lg font-semibold tabular-nums text-foreground sm:text-xl">
                       {formatSalary(job)}
                       <span className="ml-1.5 text-sm font-normal text-muted-foreground">
                         /თვე
@@ -283,18 +292,18 @@ export function JobDetail({
                   </div>
                 </section>
 
-                <section className={cn("p-6 sm:p-7", panelClass)}>
+                <section className={cn("min-w-0 p-5 sm:p-7", panelClass)}>
                   <h2 className="text-[13.5px] font-semibold text-foreground">აღწერა</h2>
-                  <p className="mt-3 text-[14px] leading-7 text-foreground/85">
+                  <p className="mt-3 text-[14px] leading-7 break-words text-foreground/85 [overflow-wrap:anywhere]">
                     {job.description}
                   </p>
                 </section>
               </div>
 
-              <aside className="space-y-4 lg:self-start">
-                <section className={cn("p-5", panelClass)}>
+              <aside className="min-w-0 space-y-4 lg:self-start">
+                <section className={cn("min-w-0 p-5", panelClass)}>
                   <h2 className="text-[13px] font-semibold text-foreground">დეტალები</h2>
-                  <div className="mt-1">
+                  <div className="mt-1 min-w-0">
                     <FactRow label="გამოქვეყნება" value={uploaded} />
                     <FactRow label="ვადა" value={expires} />
                     <FactRow
@@ -311,8 +320,8 @@ export function JobDetail({
                   </div>
 
                   {source ? (
-                    <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-border/50 bg-secondary/40 px-3 py-2.5">
-                      <span className="flex size-8 items-center justify-center overflow-hidden rounded-lg bg-card">
+                    <div className="mt-4 flex min-w-0 items-center gap-2.5 rounded-2xl border border-border/50 bg-secondary/40 px-3 py-2.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card">
                         <Image
                           src={source.logo}
                           alt=""
@@ -349,14 +358,14 @@ export function JobDetail({
                   >
                     განაცხადის გაგზავნა
                     <ArrowUpRight
-                      className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                      className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                       strokeWidth={2}
                     />
                   </button>
                 </section>
 
                 {similarJobs.length > 0 ? (
-                  <section className={cn("p-5", panelClass)}>
+                  <section className={cn("min-w-0 p-5", panelClass)}>
                     <h2 className="text-[13px] font-semibold text-foreground">
                       მსგავსი ვაკანსიები
                     </h2>
