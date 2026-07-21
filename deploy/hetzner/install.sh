@@ -40,12 +40,20 @@ git_sync() {
     return 0
   fi
 
-  if [[ -d .git ]] && git remote get-url origin 2>/dev/null | grep -q '^git@github.com:'; then
-    echo "[recruiter-platform] existing SSH clone — skipping fetch"
-    return 0
+  # Public HTTPS (or any existing clone that can fetch) — sync without deploy key.
+  if [[ -d .git ]]; then
+    git remote set-url origin "$REPO_HTTPS"
+    if git fetch origin main; then
+      git reset --hard origin/main
+      return 0
+    fi
+  else
+    if git clone -b main "$REPO_HTTPS" .; then
+      return 0
+    fi
   fi
 
-  echo "[recruiter-platform] No deploy key or GITHUB_TOKEN — cannot sync private repo" >&2
+  echo "[recruiter-platform] No deploy key, GITHUB_TOKEN, or reachable origin — cannot sync" >&2
   echo "Add /root/.ssh/recruiter_platform_deploy to GitHub deploy keys, or export GITHUB_TOKEN" >&2
   exit 1
 }
