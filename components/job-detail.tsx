@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import {
@@ -136,6 +136,8 @@ export function JobDetail({
   const [dark, setDark] = useState(false)
   const [themeReady, setThemeReady] = useState(false)
   const [similarPool, setSimilarPool] = useState<Job[]>(allJobs)
+  const [applicants, setApplicants] = useState(job.applicants)
+  const applyInFlight = useRef(false)
   const source = sourceMeta(job.source)
   const uploaded = formatDaysAgoDate(job.postedDaysAgo)
   const expires = formatDaysAgoDate(job.postedDaysAgo - EXPIRY_WINDOW_DAYS)
@@ -145,12 +147,8 @@ export function JobDetail({
   )
 
   useEffect(() => {
-    // Record scrape click when the detail page is opened
-    if (!job.id.includes(":")) return
-    void fetch(`/api/jobs/${encodeURIComponent(job.id)}/click`, { method: "POST" }).catch(
-      () => undefined
-    )
-  }, [job.id])
+    setApplicants(job.applicants)
+  }, [job.id, job.applicants])
 
   // Similar jobs are not on the critical path — fetch a small pool after paint.
   useEffect(() => {
@@ -306,7 +304,7 @@ export function JobDetail({
                     <FactRow label="ვადა" value={expires} />
                     <FactRow
                       label="აპლიკანტები"
-                      value={formatInt(job.applicants)}
+                      value={formatInt(applicants)}
                     />
                     <FactRow
                       label="წყარო"
@@ -342,12 +340,31 @@ export function JobDetail({
                     className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                     onClick={async () => {
                       const applyUrl = job.applyUrl || job.sourceUrl
+                      if (applyInFlight.current) return
+                      applyInFlight.current = true
                       try {
-                        await fetch(`/api/jobs/${encodeURIComponent(job.id)}/click`, {
-                          method: "POST",
-                        })
+                        // Count only real apply clicks — not page views.
+                        if (job.id.includes(":")) {
+                          const res = await fetch(
+                            `/api/jobs/${encodeURIComponent(job.id)}/click`,
+                            { method: "POST" }
+                          )
+                          if (res.ok) {
+                            const data = (await res.json()) as {
+                              click_count?: number
+                            }
+                            const next = Number(data.click_count)
+                            if (Number.isFinite(next) && next > 0) {
+                              setApplicants(next)
+                            } else {
+                              setApplicants((n) => n + 1)
+                            }
+                          }
+                        }
                       } catch {
                         // non-blocking
+                      } finally {
+                        applyInFlight.current = false
                       }
                       if (applyUrl) {
                         window.open(applyUrl, "_blank", "noopener,noreferrer")
