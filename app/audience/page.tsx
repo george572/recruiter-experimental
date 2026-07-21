@@ -1,5 +1,5 @@
-import { AudienceOverview } from "@/components/audience-overview"
+import { redirect } from "next/navigation"
 
 export default function AudiencePage() {
-  return <AudienceOverview />
+  redirect("/")
 }

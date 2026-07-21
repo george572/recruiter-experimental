@@ -1,0 +1,12 @@
+# Append / replace in /opt/samushao/app/Caddyfile
+#
+# Public marketing site → Next.js audience board
+# HR product stays on the Express recruiter service
+
+recruiter.ge, www.recruiter.ge {
+  reverse_proxy recruiter-platform:4004
+}
+
+app.recruiter.ge {
+  reverse_proxy recruiter:4003
+}

@@ -1,0 +1,31 @@
+# Runs on the Hetzner box beside Samushao (/opt/samushao/app).
+# Shares Docker network app_default; talks to Samushao app:4000 for scraped jobs.
+
+services:
+  recruiter-platform:
+    container_name: samushao-recruiter-platform
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: https://recruiter.ge
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: G-3T11JCESTD
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      NODE_ENV: production
+      PORT: 4004
+      HOSTNAME: 0.0.0.0
+      SAMUSHAO_API_BASE: http://app:4000
+      NEXT_PUBLIC_API_BASE_URL: http://app:4000
+      NEXT_PUBLIC_SITE_URL: https://recruiter.ge
+      NEXT_PUBLIC_GA_MEASUREMENT_ID: G-3T11JCESTD
+    networks:
+      samushao:
+        aliases:
+          - recruiter-platform
+
+networks:
+  samushao:
+    external: true
+    name: app_default

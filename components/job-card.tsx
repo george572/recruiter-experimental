@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { MapPin, Briefcase, Clock, Users, ArrowUpRight, Bookmark } from "lucide-react"
 import type { Job } from "@/lib/jobs"
+import { formatJobSalary } from "@/lib/jobs"
 
 const LABELS: Record<string, string> = {
   Engineering: "ინჟინერია",
@@ -93,10 +94,12 @@ export function JobCard({ job, active }: JobCardProps) {
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] text-muted-foreground sm:text-[11px]">ხელფასი</span>
           <span className="text-sm font-semibold text-foreground sm:text-base">
-            {job.currency}
-            {job.salaryMin.toLocaleString()} – {job.currency}
-            {job.salaryMax.toLocaleString()}
-            <span className="ml-1 text-[11px] font-normal text-muted-foreground sm:text-xs">/თვე</span>
+            {formatJobSalary(job)}
+            {job.salaryMin > 0 || job.salaryMax > 0 ? (
+              <span className="ml-1 text-[11px] font-normal text-muted-foreground sm:text-xs">
+                /თვე
+              </span>
+            ) : null}
           </span>
           <div className="mt-1 grid grid-cols-1 gap-1 text-[10px] text-muted-foreground sm:flex sm:items-center sm:gap-3 sm:text-[11px]">
             <span className="flex items-center gap-1.5">

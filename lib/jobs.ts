@@ -92,6 +92,8 @@ export interface Job {
   type: JobType
   level: Level
   category: string
+  /** Samushao scrape category_id when known */
+  categoryId?: number | null
   source: JobSource
   salaryMin: number
   salaryMax: number
@@ -104,6 +106,9 @@ export interface Job {
   /** Accepts applications without a CV / portfolio-first roles */
   cvNotRequired?: boolean
   comments?: JobComment[]
+  sourceUrl?: string | null
+  applyUrl?: string | null
+  clickCount?: number
 }
 
 export const CATEGORIES = [
@@ -809,3 +814,29 @@ export const JOBS: Job[] = [
     applicants: 69,
   }
 ]
+
+export function getJobById(id: string): Job | undefined {
+  return JOBS.find((job) => job.id === id)
+}
+
+/** Locale-stable int grouping — keep inline so salary render never depends on import cycles. */
+function formatSalaryInt(n: number): string {
+  const abs = String(Math.trunc(Math.abs(Number(n) || 0)))
+  const grouped = abs.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return n < 0 ? `-${grouped}` : grouped
+}
+
+/** Display salary, or "შეთანხმებით" when none was provided. */
+export function formatJobSalary(job: Pick<Job, "salaryMin" | "salaryMax" | "currency">): string {
+  const min = Number(job.salaryMin) || 0
+  const max = Number(job.salaryMax) || 0
+  if (min <= 0 && max <= 0) return "შეთანხმებით"
+
+  const currency = job.currency || "₾"
+  if (min > 0 && max > 0 && min !== max) {
+    return `${formatSalaryInt(min)} – ${formatSalaryInt(max)} ${currency}`
+  }
+  const amount = max || min
+  return `${formatSalaryInt(amount)} ${currency}`
+}
+

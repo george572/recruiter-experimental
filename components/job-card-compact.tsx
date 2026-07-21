@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import { MapPin, Bookmark } from "lucide-react"
-import { JOB_SOURCES, type Job } from "@/lib/jobs"
+import { formatDaysAgoDate } from "@/lib/format"
+import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 
 const LABELS: Record<string, string> = {
   Engineering: "ინჟინერია",
@@ -27,19 +27,10 @@ const LABELS: Record<string, string> = {
 
 const EXPIRY_WINDOW_DAYS = 30
 
-function formatDate(daysAgo: number) {
-  const date = new Date()
-  date.setHours(12, 0, 0, 0)
-  date.setDate(date.getDate() - daysAgo)
-  return date.toLocaleDateString("ka-GE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function cityOnly(location: string) {
-  return location.split(",")[0]?.trim() || location
+function cityOnly(location: string | null | undefined) {
+  const value = String(location || "").trim()
+  if (!value) return ""
+  return value.split(",")[0]?.trim() || value
 }
 
 interface JobCardCompactProps {
@@ -48,6 +39,7 @@ interface JobCardCompactProps {
   onClick?: () => void
   /** Tighter layout so ~4–5 cards fit in a mobile viewport */
   dense?: boolean
+  nowMs?: number
 }
 
 export function JobCardCompact({
@@ -55,12 +47,24 @@ export function JobCardCompact({
   active = false,
   onClick,
   dense = false,
+  nowMs,
 }: JobCardCompactProps) {
-  const place = dense ? cityOnly(job.location) : job.location
-  const uploaded = formatDate(job.postedDaysAgo)
-  const expires = formatDate(job.postedDaysAgo - EXPIRY_WINDOW_DAYS)
+  const place = dense ? cityOnly(job.location) : String(job.location || "")
+  const uploaded = formatDaysAgoDate(Number(job.postedDaysAgo) || 0, nowMs)
+  const expires = formatDaysAgoDate(
+    (Number(job.postedDaysAgo) || 0) - EXPIRY_WINDOW_DAYS,
+    nowMs
+  )
   const sourceLabel =
-    JOB_SOURCES.find((item) => item.id === job.source)?.label ?? job.source
+    JOB_SOURCES.find((item) => item.id === job.source)?.label ?? String(job.source || "")
+  const logoSrc =
+    typeof job.logo === "string" && job.logo.trim() ? job.logo.trim() : "/placeholder.svg"
+  let salaryLabel = "შეთანხმებით"
+  try {
+    salaryLabel = formatJobSalary(job)
+  } catch {
+    salaryLabel = "შეთანხმებით"
+  }
 
   if (dense) {
     return (
@@ -89,9 +93,10 @@ export function JobCardCompact({
         {/* Row 1: logo + title/company — full width */}
         <div className="flex items-start gap-3.5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-secondary">
-            <Image
-              src={job.logo || "/placeholder.svg"}
-              alt={`${job.company} ლოგო`}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoSrc}
+              alt=""
               width={40}
               height={40}
               className="h-full w-full object-cover"
@@ -124,9 +129,7 @@ export function JobCardCompact({
         {/* Salary + source + save */}
         <div className="mt-3 flex items-center justify-between gap-3 pt-2.5">
           <p className="min-w-0 text-[13px] font-semibold tabular-nums leading-none text-foreground">
-            {job.currency}
-            {job.salaryMin.toLocaleString("ka-GE")} – {job.currency}
-            {job.salaryMax.toLocaleString("ka-GE")}
+            {salaryLabel}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="text-[10px] font-semibold tracking-wide text-muted-foreground">
@@ -165,9 +168,10 @@ export function JobCardCompact({
       }`}
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-secondary">
-        <Image
-          src={job.logo || "/placeholder.svg"}
-          alt={`${job.company} ლოგო`}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoSrc}
+          alt=""
           width={44}
           height={44}
           className="h-full w-full object-cover"
@@ -209,9 +213,7 @@ export function JobCardCompact({
 
       <div className="hidden shrink-0 flex-col items-end justify-center gap-1 sm:flex">
         <span className="text-sm font-semibold tabular-nums text-foreground">
-          {job.currency}
-          {job.salaryMin.toLocaleString()} – {job.currency}
-          {job.salaryMax.toLocaleString()}
+          {salaryLabel}
         </span>
       </div>
     </article>

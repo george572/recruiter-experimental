@@ -84,11 +84,11 @@ export type SamushaoWorkMode = (typeof SAMUSHAO_WORK_MODES)[number]
 export type SamushaoCity = (typeof SAMUSHAO_CITIES)[number]
 
 export interface SamushaoFilters {
-  categories: SamushaoCategory[]
+  categories: string[]
   experience: SamushaoExperience[]
   schedules: SamushaoSchedule[]
   workModes: SamushaoWorkMode[]
-  cities: SamushaoCity[]
+  cities: string[]
   salaryMin: number
   salaryMax: number
 }
@@ -116,13 +116,61 @@ export function countActiveSamushaoFilters(filters: SamushaoFilters): number {
 }
 
 const CATEGORY_FROM_ENGLISH: Record<string, SamushaoCategory> = {
-  Engineering: "ინფორმაციული ტექნოლოგიები",
+  Engineering: "ინჟინერია",
   Design: "Web/Digital/Design",
   Product: "მენეჯმენტი",
   Marketing: "მარკეტინგი",
   Data: "ინფორმაციული ტექნოლოგიები",
   Sales: "გაყიდვები",
   Finance: "საბანკო-საფინანსო",
+  "Customer relations": "მომხმარებელთან ურთიერთობები",
+  HoReCa: "სასტუმრო, რესტორანი, კაფე, HoReCa",
+  "Banking and finances": "საბანკო-საფინანსო",
+  Education: "განათლება",
+  Cook: "მზარეული",
+  Confectionery: "მზარეული, მცხობელი, დამხმარე",
+  Management: "მენეჯმენტი",
+  "Warehouse and packaging": "საწყობი და წარმოება",
+  Medical: "სამედიცინო",
+  Hospitality: "სასტუმრო, რესტორანი, კაფე, HoReCa",
+  Other: "სხვა",
+  Retail: "საცალო ვაჭრობა",
+  Distribution: "დისტრიბუცია",
+  Security: "უსაფრთხოება",
+  Gambling: "აზარტული",
+  Logistics: "ლოჯისტიკა",
+  "Information Technologies": "ინფორმაციული ტექნოლოგიები",
+  Janitor: "დასუფთავება",
+  Driver: "მძღოლი",
+  Pharmacy: "ფარმაცია",
+  Accounting: "ბუღალტერია",
+  Procurements: "საოფისე",
+  Waiter: "მიმტანი",
+  Cashier: "მოლარე-კონსულტანტი",
+  Tourism: "ტურიზმი",
+  Construction: "რემონტი, მშენებლობა",
+  Office: "საოფისე",
+  HR: "HR",
+  Legal: "იურიდიული",
+}
+
+export function normalizeCategoryName(raw: string | null | undefined): string {
+  const value = String(raw || "").trim()
+  if (!value) return "სხვა"
+  if ((SAMUSHAO_CATEGORIES as readonly string[]).includes(value)) return value
+  return (
+    CATEGORY_FROM_ENGLISH[value] ||
+    CATEGORY_FROM_ENGLISH[
+      Object.keys(CATEGORY_FROM_ENGLISH).find(
+        (k) => k.toLowerCase() === value.toLowerCase()
+      ) || ""
+    ] ||
+    value
+  )
+}
+
+export function jobCategory(job: Job): string {
+  return normalizeCategoryName(job.category)
 }
 
 const EXPERIENCE_FROM_LEVEL: Record<Level, SamushaoExperience> = {
@@ -130,13 +178,6 @@ const EXPERIENCE_FROM_LEVEL: Record<Level, SamushaoExperience> = {
   Mid: "1-2 წელი",
   Senior: "3-5 წელი",
   Lead: "5+ წელი",
-}
-
-export function jobCategory(job: Job): SamushaoCategory {
-  if ((SAMUSHAO_CATEGORIES as readonly string[]).includes(job.category)) {
-    return job.category as SamushaoCategory
-  }
-  return CATEGORY_FROM_ENGLISH[job.category] ?? "სხვა"
 }
 
 export function jobExperience(job: Job): SamushaoExperience {
@@ -154,28 +195,55 @@ export function jobWorkMode(job: Job): SamushaoWorkMode {
 }
 
 export function jobCity(job: Job): string {
-  const first = job.location.split(",")[0]?.trim() ?? job.location
-  return first
+  const location = String(job.location ?? "")
+  const first = location.split(",")[0]?.trim()
+  return first || location
 }
 
-export function matchesSamushaoFilters(job: Job, filters: SamushaoFilters): boolean {
-  if (filters.categories.length > 0 && !filters.categories.includes(jobCategory(job))) {
-    return false
+export function matchesSamushaoFilters(
+  job: Job,
+  filters: SamushaoFilters,
+  options?: {
+    /** Skip name checks when the API already filtered by category_id / city. */
+    skipCategories?: boolean
+    skipCities?: boolean
+    skipSchedules?: boolean
+    /** Prefer matching these ids when present on the job (avoids sphere/name drift). */
+    categoryIds?: number[]
+  }
+): boolean {
+  if (!options?.skipCategories && filters.categories.length > 0) {
+    const byName = filters.categories.includes(jobCategory(job))
+    const ids = options?.categoryIds
+    const byId =
+      ids != null &&
+      ids.length > 0 &&
+      job.categoryId != null &&
+      ids.includes(job.categoryId)
+    if (!byName && !byId) return false
   }
   if (filters.experience.length > 0 && !filters.experience.includes(jobExperience(job))) {
     return false
   }
-  if (filters.schedules.length > 0 && !filters.schedules.includes(jobSchedule(job))) {
+  if (
+    !options?.skipSchedules &&
+    filters.schedules.length > 0 &&
+    !filters.schedules.includes(jobSchedule(job))
+  ) {
     return false
   }
   if (filters.workModes.length > 0 && !filters.workModes.includes(jobWorkMode(job))) {
     return false
   }
-  if (filters.cities.length > 0) {
+  if (!options?.skipCities && filters.cities.length > 0) {
     const city = jobCity(job)
     if (!(filters.cities as readonly string[]).includes(city)) return false
   }
-  if (job.salaryMax < filters.salaryMin || job.salaryMin > filters.salaryMax) {
+  const hasKnownSalary = job.salaryMin > 0 || job.salaryMax > 0
+  if (
+    hasKnownSalary &&
+    (job.salaryMax < filters.salaryMin || job.salaryMin > filters.salaryMax)
+  ) {
     return false
   }
   return true

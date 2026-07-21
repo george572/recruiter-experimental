@@ -1,98 +1,112 @@
-"use client"
-
-import { useMemo, useState } from "react"
-import { AppHeader } from "@/components/app-header"
-import { FilterSlidePanel } from "@/components/filter-slide-panel"
-import { MobileBottomNav } from "@/components/mobile-bottom-nav"
-import { MobileSearchOverlay } from "@/components/mobile-search-overlay"
-import { ProfileSlidePanel } from "@/components/profile-slide-panel"
-import { StatisticsSlidePanel } from "@/components/statistics-slide-panel"
-import { JobCarousel } from "@/components/job-carousel"
+import { AudienceOverview } from "@/components/audience-overview"
+import {
+  categoryNameMapFromCounts,
+  fallbackCategoryCounts,
+  fetchCategoryCounts,
+} from "@/lib/category-counts"
+import {
+  fetchScrapedFilters,
+  fetchScrapedJobs,
+  fetchScrapedSources,
+  type ScrapedFilterOption,
+  type ScrapedSourceCount,
+} from "@/lib/scrape-jobs"
 import { JOBS } from "@/lib/jobs"
-import { contentShellClass } from "@/lib/layout"
-import { DEFAULT_FILTERS, type Filters } from "@/lib/filters"
+import type { Metadata } from "next"
+import {
+  DEFAULT_DESCRIPTION,
+  DEFAULT_TITLE,
+  buildOrganizationJsonLd,
+  buildWebsiteJsonLd,
+} from "@/lib/seo"
 
-export default function Page() {
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [filterOpen, setFilterOpen] = useState(false)
-  const [statisticsOpen, setStatisticsOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
+export const dynamic = "force-dynamic"
 
-  const filteredJobs = useMemo(() => {
-    const q = filters.query.trim().toLowerCase()
-    return JOBS.filter((job) => {
-      if (q) {
-        const haystack = `${job.title} ${job.company} ${job.tags.join(" ")} ${job.location}`.toLowerCase()
-        if (!haystack.includes(q)) return false
-      }
-      if (filters.categories.length && !filters.categories.includes(job.category)) return false
-      if (filters.types.length && !filters.types.includes(job.type)) return false
-      if (filters.workplaces.length && !filters.workplaces.includes(job.workplace)) return false
-      if (filters.levels.length && !filters.levels.includes(job.level)) return false
-      if (filters.minSalary > 0 && job.salaryMax < filters.minSalary) return false
-      return true
-    })
-  }, [filters])
+export const metadata: Metadata = {
+  title: DEFAULT_TITLE,
+  description: DEFAULT_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: "/",
+  },
+}
+
+const INITIAL_PAGE_SIZE = 50
+
+export default async function Page() {
+  let jobs = JOBS.slice(0, INITIAL_PAGE_SIZE)
+  let total = JOBS.length
+  let hasMore = JOBS.length > INITIAL_PAGE_SIZE
+  let nextOffset: number | null = hasMore ? INITIAL_PAGE_SIZE : null
+  let categories = fallbackCategoryCounts().categories
+  let sources: ScrapedSourceCount[] = []
+  let cities: ScrapedFilterOption[] = []
+
+  const [categoriesResult, filtersResult, sourcesResult] = await Promise.allSettled([
+    fetchCategoryCounts(),
+    fetchScrapedFilters(),
+    fetchScrapedSources(),
+  ])
+
+  if (categoriesResult.status === "fulfilled") {
+    categories = categoriesResult.value.categories
+  } else {
+    console.error("[page] category counts unavailable:", categoriesResult.reason)
+  }
+
+  if (filtersResult.status === "fulfilled") {
+    cities = filtersResult.value.cities ?? []
+    if (!categories.length) categories = filtersResult.value.categories ?? []
+    if (!sources.length) sources = filtersResult.value.sources ?? []
+  }
+
+  if (sourcesResult.status === "fulfilled") {
+    sources = sourcesResult.value
+  }
+
+  const categoryNames = categoryNameMapFromCounts(categories)
+
+  try {
+    const page = await fetchScrapedJobs(
+      { limit: INITIAL_PAGE_SIZE, offset: 0, order: "round_robin" },
+      categoryNames
+    )
+    if (page.jobs.length > 0) {
+      jobs = page.jobs
+      total = page.total
+      hasMore = page.hasMore
+      nextOffset = page.nextOffset
+    }
+  } catch (err) {
+    console.error("[page] scraped jobs unavailable, using mock:", err)
+  }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <MobileSearchOverlay
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        query={filters.query}
-        onQueryChange={(query) => setFilters({ ...filters, query })}
-        resultCount={filteredJobs.length}
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildWebsiteJsonLd()),
+        }}
       />
-      <FilterSlidePanel
-        filters={filters}
-        onChange={setFilters}
-        resultCount={filteredJobs.length}
-        open={filterOpen}
-        onOpenChange={setFilterOpen}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildOrganizationJsonLd()),
+        }}
       />
-      <StatisticsSlidePanel open={statisticsOpen} onOpenChange={setStatisticsOpen} />
-      <ProfileSlidePanel open={profileOpen} onOpenChange={setProfileOpen} />
-
-      <div className={contentShellClass}>
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-5">
-          <AppHeader />
-
-          <div className="flex min-h-0 flex-1 flex-col">
-            <JobCarousel jobs={filteredJobs} />
-          </div>
-        </main>
-
-        <MobileBottomNav
-          onOpenSearch={() => {
-            setFilterOpen(false)
-            setStatisticsOpen(false)
-            setProfileOpen(false)
-            setSearchOpen(true)
-          }}
-          onOpenFilters={() => {
-            setSearchOpen(false)
-            setStatisticsOpen(false)
-            setProfileOpen(false)
-            setFilterOpen(true)
-          }}
-          onOpenStatistics={() => {
-            setSearchOpen(false)
-            setFilterOpen(false)
-            setProfileOpen(false)
-            setStatisticsOpen(true)
-          }}
-          onOpenProfile={() => {
-            setSearchOpen(false)
-            setFilterOpen(false)
-            setStatisticsOpen(false)
-            setProfileOpen(true)
-          }}
-          searchOpen={searchOpen}
-          statisticsOpen={statisticsOpen}
-          profileOpen={profileOpen}
-        />
-      </div>
-    </div>
+      <AudienceOverview
+        initialJobs={jobs}
+        initialTotal={total}
+        initialHasMore={hasMore}
+        initialNextOffset={nextOffset}
+        categories={categories}
+        sources={sources}
+        cities={cities}
+        renderNowMs={Date.now()}
+      />
+    </>
   )
 }

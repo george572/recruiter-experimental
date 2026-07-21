@@ -1,0 +1,25 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-recruiter-platform
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy recruiter-platform on Hetzner
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script_stop: true
+          envs: GITHUB_TOKEN
+          script: bash /opt/samushao/recruiter-platform/deploy/hetzner/install.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_GITHUB_TOKEN }}

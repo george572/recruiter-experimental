@@ -1,8 +1,10 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -26,15 +28,22 @@ import {
   X,
 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { JobCardCompact } from "@/components/job-card-compact"
-import { MobileSearchOverlay } from "@/components/mobile-search-overlay"
-import { JOB_SOURCES, JOBS, type Job, type JobSource } from "@/lib/jobs"
-import { jobColumnClass } from "@/lib/layout"
+import { ListErrorBoundary } from "@/components/list-error-boundary"
+import { formatDaysAgoDate, formatInt } from "@/lib/format"
+import { JOB_SOURCES, formatJobSalary, type Job, type JobSource } from "@/lib/jobs"
+import {
+  JOB_SOURCE_TO_API,
+  SOURCE_KEY_TO_JOB_SOURCE,
+  type ScrapedFilterOption,
+  type ScrapedSourceCount,
+} from "@/lib/scrape-jobs"
 import {
   DEFAULT_SAMUSHAO_FILTERS,
   SALARY_MAX,
   SALARY_MIN,
-  SAMUSHAO_CATEGORIES,
   SAMUSHAO_CITIES,
   SAMUSHAO_EXPERIENCE,
   SAMUSHAO_SCHEDULES,
@@ -44,11 +53,13 @@ import {
   toggleListItem,
   type SamushaoFilters,
 } from "@/lib/samushao-filters"
+import type { CategoryCount } from "@/lib/category-counts"
 import { cn } from "@/lib/utils"
 
 type SourceFilter = JobSource | null
 
 const THEME_KEY = "audience-theme"
+const PAGE_SIZE = 50
 
 const profileCards = [
   {
@@ -93,7 +104,7 @@ const profileCards = [
 const selectorButtonBase =
   "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium leading-none transition-colors"
 const selectorButtonActive =
-  "border-border bg-secondary text-foreground"
+  "border-foreground bg-foreground text-background"
 const selectorButtonIdle =
   "border-border/60 bg-card text-foreground hover:border-border hover:bg-secondary/50"
 
@@ -108,29 +119,22 @@ const EXPIRY_WINDOW_DAYS = 30
 const tableGrid =
   "grid-cols-[minmax(130px,1fr)_minmax(150px,1.2fr)_minmax(110px,0.85fr)_minmax(110px,0.85fr)_minmax(110px,0.9fr)_minmax(100px,0.75fr)_108px]"
 
-function formatDate(daysAgo: number) {
-  const date = new Date()
-  date.setHours(12, 0, 0, 0)
-  date.setDate(date.getDate() - daysAgo)
-  return date.toLocaleDateString("ka-GE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
 function formatSalary(job: Job) {
-  return `${job.salaryMin.toLocaleString("ka-GE")} – ${job.salaryMax.toLocaleString("ka-GE")} ${job.currency}`
+  try {
+    return formatJobSalary(job)
+  } catch {
+    return "შეთანხმებით"
+  }
 }
 
 function sourceLabel(source: JobSource) {
   return JOB_SOURCES.find((item) => item.id === source)?.label ?? source.toUpperCase()
 }
 
-function jobDates(job: Job) {
+function jobDates(job: Job, nowMs?: number) {
   return {
-    uploaded: formatDate(job.postedDaysAgo),
-    expires: formatDate(job.postedDaysAgo - EXPIRY_WINDOW_DAYS),
+    uploaded: formatDaysAgoDate(job.postedDaysAgo, nowMs),
+    expires: formatDaysAgoDate(job.postedDaysAgo - EXPIRY_WINDOW_DAYS, nowMs),
   }
 }
 
@@ -173,15 +177,20 @@ function FilterAccordion({
 
 function FilterCheck({
   label,
+  count,
   checked,
   onChange,
 }: {
   label: string
+  count?: number
   checked: boolean
   onChange: () => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-lg px-0.5 py-2">
+    <label
+      className="flex cursor-pointer items-center gap-3 rounded-lg px-0.5 py-2"
+      suppressHydrationWarning
+    >
       <span
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded-md border transition-colors",
@@ -198,7 +207,12 @@ function FilterCheck({
         onChange={onChange}
         className="sr-only"
       />
-      <span className="text-[13px] text-foreground/90">{label}</span>
+      <span className="min-w-0 flex-1 text-[13px] text-foreground/90">{label}</span>
+      {typeof count === "number" ? (
+        <span className="shrink-0 tabular-nums text-[12px] text-muted-foreground">
+          {formatInt(count)}
+        </span>
+      ) : null}
     </label>
   )
 }
@@ -218,13 +232,23 @@ function AudienceFiltersBody({
   openSections,
   toggleSection,
   salaryActive,
+  categories = [],
+  cities = [],
 }: {
   filters: SamushaoFilters
   setFilters: Dispatch<SetStateAction<SamushaoFilters>>
   openSections: OpenSections
   toggleSection: (key: keyof OpenSections) => void
   salaryActive: number
+  categories?: CategoryCount[]
+  cities?: ScrapedFilterOption[]
 }) {
+  const safeCategories = categories ?? []
+  const safeCities = cities ?? []
+  const cityOptions = safeCities.length
+    ? safeCities.map((c) => c.name)
+    : [...SAMUSHAO_CITIES]
+
   return (
     <>
       <FilterAccordion
@@ -234,15 +258,16 @@ function AudienceFiltersBody({
         onToggle={() => toggleSection("categories")}
       >
         <div className="max-h-56 space-y-0.5 overflow-y-auto [scrollbar-width:thin]">
-          {SAMUSHAO_CATEGORIES.map((category) => (
+          {safeCategories.map((category) => (
             <FilterCheck
-              key={category}
-              label={category}
-              checked={filters.categories.includes(category)}
+              key={category.category_id}
+              label={category.name}
+              count={category.count}
+              checked={filters.categories.includes(category.name)}
               onChange={() =>
                 setFilters((prev) => ({
                   ...prev,
-                  categories: toggleListItem(prev.categories, category),
+                  categories: toggleListItem(prev.categories, category.name),
                 }))
               }
             />
@@ -258,8 +283,8 @@ function AudienceFiltersBody({
       >
         <div className="space-y-4 px-0.5 pt-1">
           <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground">
-            <span>{filters.salaryMin.toLocaleString("ka-GE")} $</span>
-            <span>{filters.salaryMax.toLocaleString("ka-GE")} $</span>
+            <span>{formatInt(filters.salaryMin)} $</span>
+            <span>{formatInt(filters.salaryMax)} $</span>
           </div>
           <div className="relative h-6">
             <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-secondary" />
@@ -376,19 +401,23 @@ function AudienceFiltersBody({
         onToggle={() => toggleSection("cities")}
       >
         <div className="max-h-48 space-y-0.5 overflow-y-auto [scrollbar-width:thin]">
-          {SAMUSHAO_CITIES.map((city) => (
-            <FilterCheck
-              key={city}
-              label={city}
-              checked={filters.cities.includes(city)}
-              onChange={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  cities: toggleListItem(prev.cities, city),
-                }))
-              }
-            />
-          ))}
+          {cityOptions.map((city) => {
+            const count = safeCities.find((c) => c.name === city)?.count
+            return (
+              <FilterCheck
+                key={city}
+                label={city}
+                count={count}
+                checked={filters.cities.includes(city)}
+                onChange={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    cities: toggleListItem(prev.cities, city),
+                  }))
+                }
+              />
+            )
+          })}
         </div>
       </FilterAccordion>
     </>
@@ -404,6 +433,8 @@ function AudienceFilterSlidePanel({
   toggleSection,
   salaryActive,
   activeFilterCount,
+  categories = [],
+  cities = [],
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -413,6 +444,8 @@ function AudienceFilterSlidePanel({
   toggleSection: (key: keyof OpenSections) => void
   salaryActive: number
   activeFilterCount: number
+  categories?: CategoryCount[]
+  cities?: ScrapedFilterOption[]
 }) {
   useEffect(() => {
     if (!open) return
@@ -489,6 +522,8 @@ function AudienceFilterSlidePanel({
             openSections={openSections}
             toggleSection={toggleSection}
             salaryActive={salaryActive}
+            categories={categories}
+            cities={cities}
           />
         </div>
       </aside>
@@ -496,14 +531,52 @@ function AudienceFilterSlidePanel({
   )
 }
 
-export function AudienceOverview() {
+export function AudienceOverview({
+  initialJobs = [],
+  initialTotal = 0,
+  initialHasMore = false,
+  initialNextOffset = null,
+  categories = [],
+  sources = [],
+  cities = [],
+  initialFilters,
+  renderNowMs,
+}: {
+  initialJobs?: Job[]
+  initialTotal?: number
+  initialHasMore?: boolean
+  initialNextOffset?: number | null
+  categories?: CategoryCount[]
+  sources?: ScrapedSourceCount[]
+  cities?: ScrapedFilterOption[]
+  /** Preset filters for programmatic landing pages (e.g. category / city). */
+  initialFilters?: SamushaoFilters
+  /** Fixed clock from the server so date labels hydrate cleanly. */
+  renderNowMs?: number
+}) {
+  const router = useRouter()
+  const nowMs = renderNowMs ?? 0
+  const [jobs, setJobs] = useState<Job[]>(initialJobs)
+  const [total, setTotal] = useState(initialTotal || initialJobs.length)
+  const [hasMore, setHasMore] = useState(initialHasMore)
+  const [nextOffset, setNextOffset] = useState<number | null>(
+    initialNextOffset ?? (initialHasMore ? initialJobs.length : null)
+  )
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingReset, setLoadingReset] = useState(false)
+  const loadingLock = useRef(false)
+  const fetchGen = useRef(0)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
+  const desktopScrollRef = useRef<HTMLDivElement>(null)
   const [dark, setDark] = useState(false)
   const [themeReady, setThemeReady] = useState(false)
   const [selectedSource, setSelectedSource] = useState<SourceFilter>(null)
   const [query, setQuery] = useState("")
-  const [searchOpen, setSearchOpen] = useState(false)
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [filterOpen, setFilterOpen] = useState(false)
-  const [filters, setFilters] = useState<SamushaoFilters>(DEFAULT_SAMUSHAO_FILTERS)
+  const [filters, setFilters] = useState<SamushaoFilters>(
+    initialFilters ?? DEFAULT_SAMUSHAO_FILTERS
+  )
   const [openSections, setOpenSections] = useState<OpenSections>({
     categories: true,
     salary: true,
@@ -512,6 +585,26 @@ export function AudienceOverview() {
     workMode: true,
     cities: true,
   })
+
+  const sourceCounts = useMemo(() => {
+    const map = new Map<JobSource, number>()
+    for (const row of sources) {
+      const key = SOURCE_KEY_TO_JOB_SOURCE[row.source]
+      if (key) map.set(key, row.count)
+    }
+    return map
+  }, [sources])
+
+  // Total jobs on the whole platform — must stay constant regardless of the
+  // active filters/source/search. Prefer the sum of the (unfiltered) per-source
+  // counts so the "All" chip always equals the sum of the source chips; fall
+  // back to the initial unfiltered total when sources aren't available.
+  const platformTotal = useMemo(() => {
+    if (sources.length > 0) {
+      return sources.reduce((sum, row) => sum + (Number(row.count) || 0), 0)
+    }
+    return initialTotal || initialJobs.length
+  }, [sources, initialTotal, initialJobs.length])
 
   useEffect(() => {
     const stored = window.localStorage.getItem(THEME_KEY)
@@ -525,44 +618,329 @@ export function AudienceOverview() {
     window.localStorage.setItem(THEME_KEY, dark ? "dark" : "light")
   }, [dark, themeReady])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 350)
+    return () => window.clearTimeout(timer)
+  }, [query])
+
+  const fetchPage = useCallback(
+    async (offset: number, replace: boolean) => {
+      // Replace (filter/source/query change) always wins over an in-flight loadMore.
+      if (!replace && loadingLock.current) return
+      const requestId = ++fetchGen.current
+      loadingLock.current = true
+      if (replace) setLoadingReset(true)
+      else setLoadingMore(true)
+
+      try {
+        const params = new URLSearchParams()
+        params.set("limit", String(PAGE_SIZE))
+        params.set("offset", String(offset))
+        params.set("order", "round_robin")
+
+        if (selectedSource) {
+          const apiSource = JOB_SOURCE_TO_API[selectedSource]
+          if (apiSource) params.set("source", apiSource)
+        }
+        if (debouncedQuery) params.set("q", debouncedQuery)
+
+        if (filters.categories.length === 1) {
+          const cat = categories.find((c) => c.name === filters.categories[0])
+          if (cat) params.set("category_id", String(cat.category_id))
+        }
+        if (filters.cities.length === 1) {
+          params.set("city", filters.cities[0])
+        }
+        if (filters.salaryMin > SALARY_MIN) {
+          params.set("salary_min", String(filters.salaryMin))
+        }
+        if (filters.salaryMax < SALARY_MAX) {
+          params.set("salary_max", String(filters.salaryMax))
+        }
+        if (filters.schedules.length === 1) {
+          params.set(
+            "employment_type",
+            filters.schedules[0] === "ნახევარი განაკვეთი" ? "part" : "full"
+          )
+        }
+
+        const res = await fetch(`/api/jobs?${params}`)
+        if (!res.ok) throw new Error(`jobs page failed: ${res.status}`)
+        const data = (await res.json()) as {
+          jobs?: Job[]
+          total?: number
+          hasMore?: boolean
+          has_more?: boolean
+          next_offset?: number | null
+        }
+        // A newer replace/load superseded this request — ignore stale payload.
+        if (requestId !== fetchGen.current) return
+
+        const nextJobs = Array.isArray(data.jobs) ? data.jobs : []
+        const nextTotal = Number(data.total) || 0
+        const more = Boolean(data.has_more ?? data.hasMore) && nextJobs.length > 0
+        setTotal(nextTotal)
+        setHasMore(more)
+        setNextOffset(
+          more
+            ? data.next_offset != null
+              ? Number(data.next_offset)
+              : offset + nextJobs.length
+            : null
+        )
+        setJobs((prev) => {
+          if (replace) return nextJobs
+          if (nextJobs.length === 0) return prev
+          const seen = new Set(prev.map((j) => j.id))
+          return [...prev, ...nextJobs.filter((j) => !seen.has(j.id))]
+        })
+        // Clear loading flags immediately on success (don't wait for finally),
+        // so a superseded in-flight request can't leave the UI stuck spinning.
+        if (replace) {
+          setLoadingReset(false)
+          setLoadingMore(false)
+          loadingLock.current = false
+          requestAnimationFrame(() => {
+            mobileScrollRef.current?.scrollTo({ top: 0 })
+            desktopScrollRef.current?.scrollTo({ top: 0 })
+          })
+        }
+      } catch (err) {
+        if (requestId !== fetchGen.current) return
+        console.error("[audience] load page failed:", err)
+        setHasMore(false)
+        setNextOffset(null)
+      } finally {
+        // Always release locks for the latest request; also heal a stuck loading
+        // flag if a superseded request left loadingReset true.
+        if (requestId === fetchGen.current) {
+          loadingLock.current = false
+          setLoadingMore(false)
+          setLoadingReset(false)
+        }
+      }
+    },
+    [selectedSource, debouncedQuery, filters, categories]
+  )
+
+  const serverFilterKey = useMemo(
+    () =>
+      JSON.stringify({
+        categories: filters.categories,
+        cities: filters.cities,
+        salaryMin: filters.salaryMin,
+        salaryMax: filters.salaryMax,
+        schedules: filters.schedules,
+      }),
+    [
+      filters.categories,
+      filters.cities,
+      filters.salaryMin,
+      filters.salaryMax,
+      filters.schedules,
+    ]
+  )
+
+  // Keep a stable ref so the filter effect does not re-fire when fetchPage identity changes.
+  const fetchPageRef = useRef(fetchPage)
+  fetchPageRef.current = fetchPage
+
+  const didMountFilters = useRef(false)
+  useEffect(() => {
+    if (!didMountFilters.current) {
+      didMountFilters.current = true
+      return
+    }
+    void fetchPageRef.current(0, true)
+  }, [selectedSource, debouncedQuery, serverFilterKey])
+
+  // Close the mobile filter sheet once a filter is applied so results are visible.
+  const prevFilterKey = useRef(serverFilterKey)
+  useEffect(() => {
+    if (prevFilterKey.current === serverFilterKey) return
+    prevFilterKey.current = serverFilterKey
+    setFilterOpen(false)
+  }, [serverFilterKey])
+  const loadMore = useCallback(() => {
+    if (!hasMore || loadingLock.current || loadingMore || loadingReset) return
+    const offset = nextOffset ?? jobs.length
+    void fetchPage(offset, false)
+  }, [fetchPage, hasMore, jobs.length, loadingMore, loadingReset, nextOffset])
+
+  useEffect(() => {
+    const nodes = [mobileScrollRef.current, desktopScrollRef.current].filter(
+      (n): n is HTMLDivElement => Boolean(n)
+    )
+    if (!nodes.length) return
+
+    const onScroll = (event: Event) => {
+      const el = event.currentTarget as HTMLDivElement
+      const remaining = el.scrollHeight - el.scrollTop - el.clientHeight
+      if (remaining < 320) loadMore()
+    }
+
+    for (const node of nodes) {
+      node.addEventListener("scroll", onScroll, { passive: true })
+    }
+    return () => {
+      for (const node of nodes) {
+        node.removeEventListener("scroll", onScroll)
+      }
+    }
+  }, [loadMore])
+
   const activeFilterCount = countActiveSamushaoFilters(filters)
   const salaryActive =
     filters.salaryMin > SALARY_MIN || filters.salaryMax < SALARY_MAX ? 1 : 0
 
+  const selectedCategoryIds = useMemo(() => {
+    if (filters.categories.length === 0) return [] as number[]
+    const list = categories ?? []
+    const byName = new Map(list.map((c) => [c.name, c.category_id]))
+    return filters.categories
+      .map((name) => byName.get(name))
+      .filter((id): id is number => id != null && Number.isFinite(id))
+  }, [categories, filters.categories])
+
+  // When we send a single city / employment_type to the API, trust that response.
+  const serverScopedCity = filters.cities.length === 1
+  const serverScopedSchedule = filters.schedules.length === 1
+
   const filteredJobs = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return JOBS.filter((job) => {
+    // Single category is fetched with category_id — trust the API payload.
+    // Only apply source + text search on top (both also sent to the API when set).
+    const serverScoped = filters.categories.length === 1
+    const predicate = (job: Job) => {
       if (selectedSource && job.source !== selectedSource) return false
-      if (!matchesSamushaoFilters(job, filters)) return false
-      if (q) {
-        const matchesQuery =
-          job.company.toLowerCase().includes(q) ||
-          job.title.toLowerCase().includes(q) ||
-          job.location.toLowerCase().includes(q)
-        if (!matchesQuery) return false
+      if (!serverScoped) {
+        if (
+          !matchesSamushaoFilters(job, filters, {
+            skipCities: serverScopedCity,
+            skipSchedules: serverScopedSchedule,
+            categoryIds: selectedCategoryIds,
+          })
+        ) {
+          return false
+        }
+      } else {
+        // Still honor experience / work mode / salary / city client filters if set.
+        if (
+          !matchesSamushaoFilters(job, filters, {
+            skipCategories: true,
+            skipCities: serverScopedCity,
+            skipSchedules: serverScopedSchedule,
+            categoryIds: selectedCategoryIds,
+          })
+        ) {
+          return false
+        }
+      }
+      if (debouncedQuery) {
+        const q = debouncedQuery.toLowerCase()
+        const company = String(job.company || "").toLowerCase()
+        const title = String(job.title || "").toLowerCase()
+        const location = String(job.location || "").toLowerCase()
+        if (!company.includes(q) && !title.includes(q) && !location.includes(q)) {
+          return false
+        }
       }
       return true
+    }
+    return jobs.filter((job) => {
+      try {
+        return predicate(job)
+      } catch (err) {
+        // A single malformed job must never throw during render and blank the
+        // whole board — drop it and keep going.
+        console.error("[audience] filter predicate failed for job", job?.id, err)
+        return false
+      }
     })
-  }, [selectedSource, query, filters])
+  }, [
+    jobs,
+    selectedSource,
+    debouncedQuery,
+    filters,
+    serverScopedCity,
+    serverScopedSchedule,
+    selectedCategoryIds,
+  ])
+
+  // Retina (DPR 2) Chromium keeps the scroll pane on a GPU layer that it fails to
+  // invalidate when React swaps the rows, leaving a stale/blank frame until a
+  // resize or scroll forces a recomposite. Nudge a throwaway transform across two
+  // frames whenever the visible list changes to force the layer to repaint.
+  useEffect(() => {
+    const nodes = [mobileScrollRef.current, desktopScrollRef.current].filter(
+      (n): n is HTMLDivElement => Boolean(n)
+    )
+    if (!nodes.length) return
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      for (const el of nodes) el.style.transform = "translateZ(0)"
+      raf2 = requestAnimationFrame(() => {
+        for (const el of nodes) el.style.transform = ""
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [filteredJobs])
 
   function toggleSection(key: keyof OpenSections) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  return (
-    <div className={cn("relative h-full min-h-0 w-full overflow-hidden", dark && "dark")}>
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-[420px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.04] blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[320px] w-[480px] translate-x-1/4 translate-y-1/4 rounded-full bg-primary/[0.03] blur-3xl" />
-      </div>
+  const showEmpty =
+    filteredJobs.length === 0 && !loadingReset && !loadingMore
+  const showLoadingList =
+    filteredJobs.length === 0 && (loadingReset || loadingMore)
 
-      <MobileSearchOverlay
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        query={query}
-        onQueryChange={setQuery}
-        resultCount={filteredJobs.length}
-      />
+  const emptyState = (
+    <div className="flex h-full min-h-[240px] w-full flex-1 items-center justify-center px-6">
+      <p className="text-sm text-muted-foreground">ვაკანსიები არ მოიძებნა</p>
+    </div>
+  )
+
+  const loadingListState = (
+    <div className="flex h-full min-h-[240px] w-full flex-1 items-center justify-center px-6">
+      <p className="text-sm text-muted-foreground">იტვირთება…</p>
+    </div>
+  )
+
+  const listPlaceholder = showEmpty
+    ? emptyState
+    : showLoadingList
+      ? loadingListState
+      : null
+
+  const loadMoreFooter =
+    showEmpty ? null : (
+      <div className="flex flex-col items-center gap-2 py-6">
+        {loadingMore || loadingReset ? (
+          <p className="text-sm text-muted-foreground">იტვირთება…</p>
+        ) : null}
+        {!hasMore && jobs.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            ყველა ვაკანსია ჩაიტვირთა ({formatInt(total)})
+          </p>
+        ) : null}
+        {hasMore && !loadingMore && !loadingReset ? (
+          <button
+            type="button"
+            onClick={loadMore}
+            className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            მეტის ჩატვირთვა
+          </button>
+        ) : null}
+      </div>
+    )
+
+
+  return (
+    <div className={cn("relative h-full min-h-0 w-full", dark && "dark")}>
 
       <AudienceFilterSlidePanel
         open={filterOpen}
@@ -573,6 +951,8 @@ export function AudienceOverview() {
         toggleSection={toggleSection}
         salaryActive={salaryActive}
         activeFilterCount={activeFilterCount}
+        categories={categories}
+        cities={cities}
       />
 
       <div className="flex h-full min-h-0 w-full flex-col bg-background">
@@ -617,7 +997,43 @@ export function AudienceOverview() {
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar lg:flex lg:flex-col lg:overflow-hidden">
+        {/* Mobile search + filters — fixed below header */}
+        <div className="z-20 flex shrink-0 items-center gap-2 bg-background px-5 pb-3 sm:px-6 lg:hidden">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="ძებნა"
+              className="h-10 w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-foreground/20"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            aria-expanded={filterOpen}
+            className="relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 text-foreground transition-colors hover:border-border active:bg-secondary"
+          >
+            <span className="relative">
+              <SlidersHorizontal className="size-4" strokeWidth={1.75} />
+              {activeFilterCount > 0 ? (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </span>
+            <span className="text-sm font-medium">ფილტრი</span>
+          </button>
+        </div>
+
+        <div
+          ref={mobileScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto no-scrollbar lg:flex lg:flex-col lg:overflow-hidden"
+        >
           <div className="flex min-w-0 flex-1 gap-4 px-5 sm:gap-6 sm:px-6 lg:min-h-0 lg:overflow-hidden lg:px-10 lg:pb-6">
             {/* Filters — desktop sidebar */}
             <aside className={cn("hidden w-[280px] shrink-0 flex-col overflow-hidden lg:flex", panelClass)}>
@@ -650,6 +1066,8 @@ export function AudienceOverview() {
                   openSections={openSections}
                   toggleSection={toggleSection}
                   salaryActive={salaryActive}
+                  categories={categories}
+                  cities={cities}
                 />
               </div>
             </aside>
@@ -675,13 +1093,23 @@ export function AudienceOverview() {
                     )}
                   >
                     <span>ყველა</span>
-                    <span className="tabular-nums text-[11px] text-muted-foreground">
-                      {JOBS.length}
+                    <span
+                      className={cn(
+                        "tabular-nums text-[11px]",
+                        selectedSource === null
+                          ? "text-background/70"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {formatInt(platformTotal)}
                     </span>
                   </button>
                   {JOB_SOURCES.map((source) => {
                     const active = selectedSource === source.id
-                    const count = JOBS.filter((job) => job.source === source.id).length
+                    const count = sourceCounts.get(source.id) ?? 0
+                    if (sources.length > 0 && !JOB_SOURCE_TO_API[source.id]) {
+                      return null
+                    }
                     return (
                       <button
                         key={source.id}
@@ -709,7 +1137,12 @@ export function AudienceOverview() {
                           />
                         </span>
                         <span>{source.label}</span>
-                        <span className="tabular-nums text-[11px] text-muted-foreground">
+                        <span
+                          className={cn(
+                            "tabular-nums text-[11px]",
+                            active ? "text-background/70" : "text-muted-foreground"
+                          )}
+                        >
                           {count}
                         </span>
                       </button>
@@ -718,19 +1151,27 @@ export function AudienceOverview() {
                 </div>
               </section>
 
-              <section className="min-w-0 pb-2 lg:hidden">
-                {filteredJobs.length === 0 ? (
-                  <p className="py-10 text-center text-sm text-muted-foreground">
-                    ამ ფილტრებით ვაკანსია არ მოიძებნა
-                  </p>
+              <section className="flex min-h-[280px] min-w-0 flex-1 flex-col pb-2 lg:hidden">
+                {listPlaceholder ? (
+                  listPlaceholder
                 ) : (
-                  <ul className="space-y-3">
-                    {filteredJobs.map((job) => (
-                      <li key={job.id}>
-                        <JobCardCompact job={job} dense />
-                      </li>
-                    ))}
-                  </ul>
+                  <ListErrorBoundary label="mobile-jobs">
+                    <ul className="space-y-3">
+                      {filteredJobs.map((job) => (
+                        <li key={job.id}>
+                          <JobCardCompact
+                            job={job}
+                            dense
+                            nowMs={nowMs || undefined}
+                            onClick={() =>
+                              router.push(`/jobs/${encodeURIComponent(job.id)}`)
+                            }
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                    {loadMoreFooter}
+                  </ListErrorBoundary>
                 )}
               </section>
 
@@ -741,32 +1182,33 @@ export function AudienceOverview() {
                   panelClass
                 )}
               >
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-auto p-4">
-                  <div className="flex min-h-0 min-w-[1020px] flex-1 flex-col">
-                    <div
-                      className={cn(
-                        "mb-3 grid shrink-0 gap-3 rounded-xl px-5 py-3 text-[12.5px] text-muted-foreground",
-                        tableGrid
-                      )}
-                    >
-                      <span>კომპანია</span>
-                      <span>პოზიცია</span>
-                      <span>გამოქვეყნება / ვადა</span>
-                      <span>ხელფასი</span>
-                      <span>მდებარეობა</span>
-                      <span>წყარო</span>
-                      <span className="text-right">ნახვა</span>
-                    </div>
+                <div className="flex h-full min-h-[320px] min-w-0 flex-1 flex-col p-4">
+                  <div
+                    className={cn(
+                      "mb-3 grid shrink-0 gap-3 rounded-xl px-5 py-3 text-[12.5px] text-muted-foreground",
+                      tableGrid
+                    )}
+                  >
+                    <span>კომპანია</span>
+                    <span>პოზიცია</span>
+                    <span>გამოქვეყნება / ვადა</span>
+                    <span>ხელფასი</span>
+                    <span>მდებარეობა</span>
+                    <span>წყარო</span>
+                    <span className="text-right">ნახვა</span>
+                  </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto">
-                      {filteredJobs.length === 0 ? (
-                        <p className="py-10 text-center text-sm text-muted-foreground">
-                          ამ ფილტრებით ვაკანსია არ მოიძებნა
-                        </p>
-                      ) : (
+                  <div
+                    ref={desktopScrollRef}
+                    className="min-h-0 min-w-0 flex-1 overflow-auto"
+                  >
+                    {listPlaceholder ? (
+                      listPlaceholder
+                    ) : (
+                      <ListErrorBoundary label="desktop-jobs">
                         <ul className="space-y-3">
                           {filteredJobs.map((job) => {
-                            const dates = jobDates(job)
+                            const dates = jobDates(job, nowMs || undefined)
                             return (
                               <li
                                 key={job.id}
@@ -777,8 +1219,13 @@ export function AudienceOverview() {
                               >
                                 <div className="flex min-w-0 items-center gap-2.5">
                                   <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary">
-                                    <Image
-                                      src={job.logo || "/placeholder.svg"}
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={
+                                        typeof job.logo === "string" && job.logo.trim()
+                                          ? job.logo.trim()
+                                          : "/placeholder.svg"
+                                      }
                                       alt=""
                                       width={36}
                                       height={36}
@@ -814,77 +1261,27 @@ export function AudienceOverview() {
                                 </p>
 
                                 <div className="flex justify-end pl-1">
-                                  <button
-                                    type="button"
+                                  <Link
+                                    href={`/jobs/${encodeURIComponent(job.id)}`}
                                     className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
                                   >
                                     ნახვა
                                     <ArrowRight className="size-3" strokeWidth={2.25} />
-                                  </button>
+                                  </Link>
                                 </div>
                               </li>
                             )
                           })}
                         </ul>
-                      )}
-                    </div>
+                        {loadMoreFooter}
+                      </ListErrorBoundary>
+                    )}
                   </div>
                 </div>
               </section>
             </div>
           </div>
         </div>
-
-        <nav
-          aria-label="მთავარი ნავიგაცია"
-          className="shrink-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden"
-        >
-          <div
-            className={cn(
-              jobColumnClass,
-              "flex items-center justify-between rounded-full bg-card px-1 py-2 shadow-[0_8px_32px_-10px_rgba(20,24,40,0.14)]"
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setFilterOpen(false)
-                setSearchOpen(true)
-              }}
-              aria-expanded={searchOpen}
-              className={cn(
-                "flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 overflow-visible px-0.5 py-2 transition-colors active:bg-secondary",
-                searchOpen ? "text-foreground" : "text-muted-foreground"
-              )}
-            >
-              <Search className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span className="block max-w-full px-0.5 text-center text-[9px] font-medium leading-[1.35]">
-                ძებნა
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSearchOpen(false)
-                setFilterOpen(true)
-              }}
-              className="flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 overflow-visible px-0.5 py-2 text-foreground transition-colors active:bg-secondary"
-            >
-              <span className="relative">
-                <SlidersHorizontal className="h-5 w-5 shrink-0" aria-hidden="true" />
-                {activeFilterCount > 0 ? (
-                  <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
-                    {activeFilterCount}
-                  </span>
-                ) : null}
-              </span>
-              <span className="block max-w-full px-0.5 text-center text-[9px] font-medium leading-[1.35]">
-                ფილტრები
-              </span>
-            </button>
-          </div>
-        </nav>
       </div>
     </div>
   )
