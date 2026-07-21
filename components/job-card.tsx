@@ -1,7 +1,7 @@
-import Image from "next/image"
 import { MapPin, Briefcase, Clock, Users, ArrowUpRight, Bookmark } from "lucide-react"
 import type { Job } from "@/lib/jobs"
 import { formatJobSalary } from "@/lib/jobs"
+import { CompanyLogo } from "@/components/company-logo"
 
 const LABELS: Record<string, string> = {
   Engineering: "ინჟინერია",
@@ -43,15 +43,11 @@ export function JobCard({ job, active }: JobCardProps) {
         {/* Top row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary sm:h-11 sm:w-11">
-              <Image
-                src={job.logo || "/placeholder.svg"}
-                alt={`${job.company} ლოგო`}
-                width={44}
-                height={44}
-                className="h-full w-full object-cover"
-              />
-            </div>
+            <CompanyLogo
+              src={job.logo}
+              company={job.company}
+              size={44}
+            />
             <div className="min-w-0 flex flex-col">
               <span className="truncate text-xs font-medium text-muted-foreground sm:text-[13px]">{job.company}</span>
               {job.hrActive && (

@@ -14,6 +14,7 @@ import {
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { CompanyLogo } from "@/components/company-logo"
 
 const THEME_KEY = "audience-theme"
 const EXPIRY_WINDOW_DAYS = 30
@@ -101,17 +102,15 @@ function SimilarJobCard({ job }: { job: Job }) {
   return (
     <Link
       href={`/jobs/${encodeURIComponent(job.id)}`}
+      scroll={false}
       className="flex items-start gap-3 rounded-2xl border border-border/50 bg-secondary/30 px-3 py-3 transition-colors hover:border-border hover:bg-secondary/50"
     >
-      <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-secondary">
-        <Image
-          src={job.logo || "/placeholder.svg"}
-          alt=""
-          width={36}
-          height={36}
-          className="h-full w-full object-cover"
-        />
-      </div>
+      <CompanyLogo
+        src={job.logo}
+        company={job.company}
+        size={36}
+        className="rounded-xl"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12.5px] font-semibold leading-4 text-foreground">
           {job.title}
@@ -202,14 +201,14 @@ export function JobDetail({
 
       <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-background">
         <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 bg-background px-5 py-3.5 sm:px-6 lg:px-10">
-          <a
+          <Link
             href="/"
             className="relative z-10 inline-flex shrink-0 items-center transition-opacity hover:opacity-70"
           >
             <span className="font-sans text-lg font-semibold text-black dark:text-white">
               Recruiter.ge
             </span>
-          </a>
+          </Link>
 
           <button
             type="button"
@@ -232,15 +231,11 @@ export function JobDetail({
                 <section className={cn("min-w-0 p-5 sm:p-7", panelClass)}>
                   <div className="flex items-start justify-between gap-3 sm:gap-4">
                     <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
-                      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary sm:size-14">
-                        <Image
-                          src={job.logo || "/placeholder.svg"}
-                          alt=""
-                          width={56}
-                          height={56}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                      <CompanyLogo
+                        src={job.logo}
+                        company={job.company}
+                        size={56}
+                      />
                       <div className="min-w-0">
                         <p className="truncate text-[13px] text-muted-foreground">
                           {job.company}
@@ -294,9 +289,16 @@ export function JobDetail({
 
                 <section className={cn("min-w-0 p-5 sm:p-7", panelClass)}>
                   <h2 className="text-[13.5px] font-semibold text-foreground">აღწერა</h2>
-                  <p className="mt-3 text-[14px] leading-7 break-words text-foreground/85 [overflow-wrap:anywhere]">
-                    {job.description}
-                  </p>
+                  {job.description?.trim() ? (
+                    <p className="mt-3 text-[14px] leading-7 break-words text-foreground/85 [overflow-wrap:anywhere]">
+                      {job.description}
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-[14px] leading-7 text-muted-foreground">
+                      სრული აღწერა ხელმისაწვდომია წყაროს გვერდზე — გახსენი განაცხადის
+                      ღილაკით.
+                    </p>
+                  )}
                 </section>
               </div>
 

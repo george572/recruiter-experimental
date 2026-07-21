@@ -30,6 +30,7 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { CompanyLogo } from "@/components/company-logo"
 import { JobCardCompact } from "@/components/job-card-compact"
 import { ListErrorBoundary } from "@/components/list-error-boundary"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
@@ -1164,7 +1165,10 @@ export function AudienceOverview({
                             dense
                             nowMs={nowMs || undefined}
                             onClick={() =>
-                              router.push(`/jobs/${encodeURIComponent(job.id)}`)
+                              router.push(
+                                `/jobs/${encodeURIComponent(job.id)}`,
+                                { scroll: false }
+                              )
                             }
                           />
                         </li>
@@ -1218,20 +1222,11 @@ export function AudienceOverview({
                                 )}
                               >
                                 <div className="flex min-w-0 items-center gap-2.5">
-                                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={
-                                        typeof job.logo === "string" && job.logo.trim()
-                                          ? job.logo.trim()
-                                          : "/placeholder.svg"
-                                      }
-                                      alt=""
-                                      width={36}
-                                      height={36}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  </div>
+                                  <CompanyLogo
+                                    src={job.logo}
+                                    company={job.company}
+                                    size={36}
+                                  />
                                   <p className="truncate text-[13.5px] font-semibold text-foreground">
                                     {job.company}
                                   </p>
@@ -1263,6 +1258,7 @@ export function AudienceOverview({
                                 <div className="flex justify-end pl-1">
                                   <Link
                                     href={`/jobs/${encodeURIComponent(job.id)}`}
+                                    scroll={false}
                                     className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
                                   >
                                     ნახვა

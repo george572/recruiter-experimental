@@ -3,6 +3,7 @@
 import { MapPin, Bookmark } from "lucide-react"
 import { formatDaysAgoDate } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
+import { CompanyLogo } from "@/components/company-logo"
 
 const LABELS: Record<string, string> = {
   Engineering: "ინჟინერია",
@@ -57,8 +58,6 @@ export function JobCardCompact({
   )
   const sourceLabel =
     JOB_SOURCES.find((item) => item.id === job.source)?.label ?? String(job.source || "")
-  const logoSrc =
-    typeof job.logo === "string" && job.logo.trim() ? job.logo.trim() : "/placeholder.svg"
   let salaryLabel = "შეთანხმებით"
   try {
     salaryLabel = formatJobSalary(job)
@@ -92,16 +91,12 @@ export function JobCardCompact({
       >
         {/* Row 1: logo + title/company — full width */}
         <div className="flex items-start gap-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-secondary">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={logoSrc}
-              alt=""
-              width={40}
-              height={40}
-              className="h-full w-full object-cover"
-            />
-          </div>
+          <CompanyLogo
+            src={job.logo}
+            company={job.company}
+            size={40}
+            className="rounded-xl"
+          />
 
           <div className="min-w-0 flex-1">
             <h3 className="text-[13px] font-semibold leading-4 text-foreground">
@@ -167,16 +162,12 @@ export function JobCardCompact({
           : "border-border/60 hover:border-border"
       }`}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-secondary">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={logoSrc}
-          alt=""
-          width={44}
-          height={44}
-          className="h-full w-full object-cover"
-        />
-      </div>
+      <CompanyLogo
+        src={job.logo}
+        company={job.company}
+        size={44}
+        className="rounded-xl"
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">

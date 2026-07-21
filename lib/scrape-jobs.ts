@@ -146,12 +146,17 @@ function daysAgoFrom(iso: string | null | undefined): number {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)))
 }
 
-function faviconFor(host: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`
-}
-
 function resolveJobSource(row: ScrapedJobRow): JobSource {
   return SOURCE_KEY_TO_JOB_SOURCE[row.source] || "samushao.ge"
+}
+
+/** True when logo is missing or just the job-board favicon (looks identical on every card). */
+function isGenericBoardLogo(url: string | null | undefined, source: JobSource): boolean {
+  const u = (url || "").trim()
+  if (!u) return true
+  if (/google\.com\/s2\/favicons/i.test(u)) return true
+  const boardLogo = JOB_SOURCES.find((s) => s.id === source)?.logo
+  return Boolean(boardLogo && u === boardLogo)
 }
 
 export function getSamushaoApiBaseUrl() {
@@ -169,18 +174,13 @@ export function mapScrapedJobToJob(
   categoryNames?: CategoryNameMap
 ): Job {
   const source = resolveJobSource(row)
-  const host = row.source_host || source
   const title = (row.title || "ვაკანსია").trim()
   const company = (row.company || row.business_name || "კომპანია").trim()
   const location = (row.city || row.address || "საქართველო").trim()
-  const description =
-    stripHtml(row.description_html) ||
-    row.salary_text ||
-    `${title} — ${company}`
-  const logo =
-    (row.company_logo_url && row.company_logo_url.trim()) ||
-    JOB_SOURCES.find((s) => s.id === source)?.logo ||
-    faviconFor(host)
+  const description = stripHtml(row.description_html) || row.salary_text || ""
+  const rawLogo = (row.company_logo_url && row.company_logo_url.trim()) || ""
+  // Never fall back to the jobs.ge/hr.ge/… favicon — every card looks the same.
+  const logo = isGenericBoardLogo(rawLogo, source) ? "" : rawLogo
 
   const salaryMin = Math.round(Number(row.salary_min) || 0)
   const salaryMax = Math.round(Number(row.salary_max) || salaryMin || 0)
