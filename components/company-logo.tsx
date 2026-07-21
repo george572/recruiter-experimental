@@ -1,4 +1,6 @@
-import Image from "next/image"
+"use client"
+
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 function companyInitial(company: string | null | undefined) {
@@ -25,22 +27,34 @@ export function CompanyLogo({
     !url ||
     url === "/placeholder.svg" ||
     /google\.com\/s2\/favicons/i.test(url)
+  const [failed, setFailed] = useState(false)
 
-  if (!isGeneric) {
+  if (!isGeneric && !failed) {
     return (
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-secondary",
+          "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5 ring-1 ring-border/40",
           className
         )}
         style={{ width: size, height: size }}
       >
-        <Image
+        {/* Plain img — jobs.ge assets are often tiny GIFs; contain + pad beats object-cover blur */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={url}
           alt=""
           width={size}
           height={size}
-          className={cn("h-full w-full object-cover", imgClassName)}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer-when-downgrade"
+          className={cn(
+            "max-h-full max-w-full object-contain",
+            // Avoid upscaling 20px logo_icon GIFs into mushy circles
+            "image-rendering-auto",
+            imgClassName
+          )}
+          onError={() => setFailed(true)}
         />
       </div>
     )

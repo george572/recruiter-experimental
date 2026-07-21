@@ -70,13 +70,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
+  modal,
 }: Readonly<{
   children: React.ReactNode
+  modal: React.ReactNode
 }>) {
   return (
     <html lang="ka" className="h-full bg-background">
       <body className="h-full overflow-hidden font-sans antialiased">
         {children}
+        {modal}
         <GoogleAnalytics />
         <ProductionAnalytics />
       </body>

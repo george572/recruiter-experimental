@@ -29,7 +29,6 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { CompanyLogo } from "@/components/company-logo"
 import { JobCardCompact } from "@/components/job-card-compact"
 import { ListErrorBoundary } from "@/components/list-error-boundary"
@@ -555,7 +554,6 @@ export function AudienceOverview({
   /** Fixed clock from the server so date labels hydrate cleanly. */
   renderNowMs?: number
 }) {
-  const router = useRouter()
   const nowMs = renderNowMs ?? 0
   const [jobs, setJobs] = useState<Job[]>(initialJobs)
   const [total, setTotal] = useState(initialTotal || initialJobs.length)
@@ -1164,12 +1162,7 @@ export function AudienceOverview({
                             job={job}
                             dense
                             nowMs={nowMs || undefined}
-                            onClick={() =>
-                              router.push(
-                                `/jobs/${encodeURIComponent(job.id)}`,
-                                { scroll: false }
-                              )
-                            }
+                            href={`/jobs/${encodeURIComponent(job.id)}`}
                           />
                         </li>
                       ))}

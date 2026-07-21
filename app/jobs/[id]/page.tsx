@@ -1,9 +1,7 @@
 import type { Metadata } from "next"
-import { cache } from "react"
 import { notFound } from "next/navigation"
 import { JobDetail } from "@/components/job-detail"
-import { fetchScrapedJobById } from "@/lib/scrape-jobs"
-import { getJobById, type Job } from "@/lib/jobs"
+import { loadJob } from "@/lib/load-job"
 import {
   SITE_NAME,
   buildJobBreadcrumbJsonLd,
@@ -17,17 +15,6 @@ type JobPageProps = {
 }
 
 export const dynamic = "force-dynamic"
-
-/** Deduped across generateMetadata + page for the same request. */
-const loadJob = cache(async (id: string): Promise<Job | null> => {
-  try {
-    const job = await fetchScrapedJobById(id)
-    if (job) return job
-  } catch {
-    // fall through to mock data below
-  }
-  return getJobById(id) ?? null
-})
 
 export async function generateMetadata({
   params,

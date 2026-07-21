@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { MapPin, Bookmark } from "lucide-react"
 import { formatDaysAgoDate } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
@@ -37,6 +38,8 @@ function cityOnly(location: string | null | undefined) {
 interface JobCardCompactProps {
   job: Job
   active?: boolean
+  /** Soft-nav to job detail (keeps list mounted via route intercept). */
+  href?: string
   onClick?: () => void
   /** Tighter layout so ~4–5 cards fit in a mobile viewport */
   dense?: boolean
@@ -46,6 +49,7 @@ interface JobCardCompactProps {
 export function JobCardCompact({
   job,
   active = false,
+  href,
   onClick,
   dense = false,
   nowMs,
@@ -65,30 +69,19 @@ export function JobCardCompact({
     salaryLabel = "შეთანხმებით"
   }
 
+  const interactive = Boolean(href || onClick)
+
   if (dense) {
-    return (
-      <article
-        role={onClick ? "button" : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onClick={onClick}
-        onKeyDown={
-          onClick
-            ? (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  onClick()
-                }
-              }
-            : undefined
-        }
-        className={`w-full rounded-2xl border bg-card px-5 py-5 transition-colors ${
-          onClick ? "cursor-pointer" : ""
-        } ${
-          active
-            ? "border-primary/20 shadow-[0_2px_12px_-6px_rgba(20,24,40,0.08)]"
-            : "border-border/60"
-        }`}
-      >
+    const className = `w-full rounded-2xl border bg-card px-5 py-5 transition-colors ${
+      interactive ? "cursor-pointer" : ""
+    } ${
+      active
+        ? "border-primary/20 shadow-[0_2px_12px_-6px_rgba(20,24,40,0.08)]"
+        : "border-border/60"
+    }`
+
+    const body = (
+      <>
         {/* Row 1: logo + title/company — full width */}
         <div className="flex items-start gap-3.5">
           <CompanyLogo
@@ -133,35 +126,59 @@ export function JobCardCompact({
             <button
               type="button"
               aria-label="ვაკანსიის შენახვა"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
               className="-mr-0.5 flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
             >
               <Bookmark className="size-3.5" strokeWidth={1.75} />
             </button>
           </div>
         </div>
+      </>
+    )
+
+    if (href) {
+      return (
+        <Link href={href} scroll={false} className={`block ${className}`}>
+          {body}
+        </Link>
+      )
+    }
+
+    return (
+      <article
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onClick()
+                }
+              }
+            : undefined
+        }
+        className={className}
+      >
+        {body}
       </article>
     )
   }
 
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick?.()
-        }
-      }}
-      aria-current={active ? "true" : undefined}
-      className={`flex h-[120px] w-full cursor-pointer items-center gap-4 rounded-2xl border bg-card px-4 transition-colors ${
-        active
-          ? "border-primary/20 shadow-[0_2px_12px_-6px_rgba(20,24,40,0.08)]"
-          : "border-border/60 hover:border-border"
-      }`}
-    >
+  const className = `flex h-[120px] w-full items-center gap-4 rounded-2xl border bg-card px-4 transition-colors ${
+    interactive ? "cursor-pointer" : ""
+  } ${
+    active
+      ? "border-primary/20 shadow-[0_2px_12px_-6px_rgba(20,24,40,0.08)]"
+      : "border-border/60 hover:border-border"
+  }`
+
+  const body = (
+    <>
       <CompanyLogo
         src={job.logo}
         company={job.company}
@@ -177,7 +194,10 @@ export function JobCardCompact({
           <button
             type="button"
             aria-label="ვაკანსიის შენახვა"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
             className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <Bookmark className="h-3.5 w-3.5" />
@@ -207,6 +227,37 @@ export function JobCardCompact({
           {salaryLabel}
         </span>
       </div>
+    </>
+  )
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        scroll={false}
+        aria-current={active ? "true" : undefined}
+        className={className}
+      >
+        {body}
+      </Link>
+    )
+  }
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
+      aria-current={active ? "true" : undefined}
+      className={className}
+    >
+      {body}
     </article>
   )
 }
