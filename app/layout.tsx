@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import '@fontsource/google-sans/georgian.css'
 import '@fontsource/google-sans/latin.css'
+import { FeedbackPrompt } from '@/components/feedback-prompt'
 import { GoogleAnalytics } from '@/components/google-analytics'
 import { ProductionAnalytics } from '@/components/production-analytics'
 import {
@@ -80,6 +81,7 @@ export default function RootLayout({
       <body className="h-full overflow-hidden font-sans antialiased">
         {children}
         {modal}
+        <FeedbackPrompt />
         <GoogleAnalytics />
         <ProductionAnalytics />
       </body>
