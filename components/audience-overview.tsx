@@ -283,8 +283,8 @@ function AudienceFiltersBody({
       >
         <div className="space-y-4 px-0.5 pt-1">
           <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground">
-            <span>{formatInt(filters.salaryMin)} $</span>
-            <span>{formatInt(filters.salaryMax)} $</span>
+            <span>{formatInt(filters.salaryMin)} ₾</span>
+            <span>{formatInt(filters.salaryMax)} ₾</span>
           </div>
           <div className="relative h-6">
             <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-secondary" />
@@ -428,25 +428,36 @@ function AudienceFilterSlidePanel({
   open,
   onOpenChange,
   filters,
-  setFilters,
+  onApply,
   openSections,
   toggleSection,
-  salaryActive,
-  activeFilterCount,
   categories = [],
   cities = [],
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   filters: SamushaoFilters
-  setFilters: Dispatch<SetStateAction<SamushaoFilters>>
+  onApply: (filters: SamushaoFilters) => void
   openSections: OpenSections
   toggleSection: (key: keyof OpenSections) => void
-  salaryActive: number
-  activeFilterCount: number
   categories?: CategoryCount[]
   cities?: ScrapedFilterOption[]
 }) {
+  const [draft, setDraft] = useState<SamushaoFilters>(filters)
+  const wasOpen = useRef(false)
+
+  // Seed draft from applied filters only when the sheet opens.
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setDraft(filters)
+    }
+    wasOpen.current = open
+  }, [open, filters])
+
+  const draftActiveCount = countActiveSamushaoFilters(draft)
+  const draftSalaryActive =
+    draft.salaryMin > SALARY_MIN || draft.salaryMax < SALARY_MAX ? 1 : 0
+
   useEffect(() => {
     if (!open) return
 
@@ -466,6 +477,11 @@ function AudienceFilterSlidePanel({
       document.body.style.overflow = previousOverflow
     }
   }, [open])
+
+  function applyAndClose() {
+    onApply(draft)
+    onOpenChange(false)
+  }
 
   return (
     <>
@@ -493,11 +509,11 @@ function AudienceFilterSlidePanel({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setFilters(DEFAULT_SAMUSHAO_FILTERS)}
-              disabled={activeFilterCount === 0}
+              onClick={() => setDraft(DEFAULT_SAMUSHAO_FILTERS)}
+              disabled={draftActiveCount === 0}
               className={cn(
                 "inline-flex items-center gap-1 text-xs transition-colors",
-                activeFilterCount > 0
+                draftActiveCount > 0
                   ? "text-muted-foreground hover:text-foreground"
                   : "cursor-default text-muted-foreground/40"
               )}
@@ -515,16 +531,25 @@ function AudienceFilterSlidePanel({
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-2 no-scrollbar">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-2 no-scrollbar">
           <AudienceFiltersBody
-            filters={filters}
-            setFilters={setFilters}
+            filters={draft}
+            setFilters={setDraft}
             openSections={openSections}
             toggleSection={toggleSection}
-            salaryActive={salaryActive}
+            salaryActive={draftSalaryActive}
             categories={categories}
             cities={cities}
           />
+        </div>
+        <div className="shrink-0 border-t border-border/60 bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={applyAndClose}
+            className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+          >
+            გაფილტრე
+          </button>
         </div>
       </aside>
     </>
@@ -753,13 +778,6 @@ export function AudienceOverview({
     void fetchPageRef.current(0, true)
   }, [selectedSource, debouncedQuery, serverFilterKey])
 
-  // Close the mobile filter sheet once a filter is applied so results are visible.
-  const prevFilterKey = useRef(serverFilterKey)
-  useEffect(() => {
-    if (prevFilterKey.current === serverFilterKey) return
-    prevFilterKey.current = serverFilterKey
-    setFilterOpen(false)
-  }, [serverFilterKey])
   const loadMore = useCallback(() => {
     if (!hasMore || loadingLock.current || loadingMore || loadingReset) return
     const offset = nextOffset ?? jobs.length
@@ -945,11 +963,9 @@ export function AudienceOverview({
         open={filterOpen}
         onOpenChange={setFilterOpen}
         filters={filters}
-        setFilters={setFilters}
+        onApply={setFilters}
         openSections={openSections}
         toggleSection={toggleSection}
-        salaryActive={salaryActive}
-        activeFilterCount={activeFilterCount}
         categories={categories}
         cities={cities}
       />

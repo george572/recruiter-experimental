@@ -239,12 +239,19 @@ export function matchesSamushaoFilters(
     const city = jobCity(job)
     if (!(filters.cities as readonly string[]).includes(city)) return false
   }
-  const hasKnownSalary = job.salaryMin > 0 || job.salaryMax > 0
-  if (
-    hasKnownSalary &&
-    (job.salaryMax < filters.salaryMin || job.salaryMin > filters.salaryMax)
-  ) {
-    return false
+  const salaryFilterActive =
+    filters.salaryMin > SALARY_MIN || filters.salaryMax < SALARY_MAX
+  if (salaryFilterActive) {
+    const jobMin = Number(job.salaryMin) || 0
+    const jobMax = Number(job.salaryMax) || 0
+    // Only salaried jobs; exclude "შეთანხმებით" / unknown pay.
+    if (jobMin <= 0 && jobMax <= 0) return false
+    // Keep jobs whose published range overlaps the selected band.
+    const effectiveMax = jobMax > 0 ? jobMax : jobMin
+    const effectiveMin = jobMin > 0 ? jobMin : jobMax
+    if (effectiveMax < filters.salaryMin || effectiveMin > filters.salaryMax) {
+      return false
+    }
   }
   return true
 }
