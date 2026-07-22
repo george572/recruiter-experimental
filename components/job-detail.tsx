@@ -16,6 +16,7 @@ import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { CompanyLogo } from "@/components/company-logo"
 import { JobDescriptionBody } from "@/components/job-description-body"
+import { JobReactionControls } from "@/components/job-reaction-controls"
 
 const THEME_KEY = "audience-theme"
 const EXPIRY_WINDOW_DAYS = 30
@@ -335,9 +336,20 @@ export function JobDetail({
                     </div>
                   ) : null}
 
+                  <div className="mt-5">
+                    <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      შეფასება
+                    </p>
+                    <JobReactionControls
+                      jobId={job.id}
+                      likes={job.likes}
+                      dislikes={job.dislikes}
+                    />
+                  </div>
+
                   <button
                     type="button"
-                    className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                    className="group mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                     onClick={async () => {
                       const applyUrl = job.applyUrl || job.sourceUrl
                       if (applyInFlight.current) return

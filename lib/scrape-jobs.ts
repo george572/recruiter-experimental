@@ -26,6 +26,8 @@ export type ScrapedJobRow = {
   apply_url?: string | null
   category_id?: number | null
   click_count?: number | null
+  like_count?: number | null
+  dislike_count?: number | null
   scraped_at: string | null
   updated_at?: string | null
   created_at?: string | null
@@ -346,6 +348,8 @@ export function mapScrapedJobToJob(
     descriptionHtml,
     tags,
     applicants: Number(row.click_count) || 0,
+    likes: Number(row.like_count) || 0,
+    dislikes: Number(row.dislike_count) || 0,
     sourceUrl: row.source_url || null,
     applyUrl: row.apply_url || row.source_url || null,
     clickCount: Number(row.click_count) || 0,
@@ -521,5 +525,43 @@ export async function recordScrapedJobClick(id: string): Promise<{
   return {
     click_count: Number(data.click_count) || 0,
     source_url: data.source_url ?? null,
+  }
+}
+
+export type JobReactionVote = "like" | "dislike" | null
+
+export async function recordScrapedJobReaction(
+  id: string,
+  vote: JobReactionVote,
+  previous: JobReactionVote
+): Promise<{
+  vote: JobReactionVote
+  like_count: number
+  dislike_count: number
+}> {
+  const base = getSamushaoApiBaseUrl()
+  const res = await fetch(
+    `${base}/api/scraped-jobs/${encodeURIComponent(id)}/reaction`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vote, previous }),
+      cache: "no-store",
+    }
+  )
+  if (!res.ok) {
+    throw new Error(`scraped reaction failed: ${res.status}`)
+  }
+  const data = (await res.json()) as {
+    vote?: JobReactionVote
+    like_count?: number
+    dislike_count?: number
+  }
+  const next =
+    data.vote === "like" || data.vote === "dislike" ? data.vote : null
+  return {
+    vote: next,
+    like_count: Number(data.like_count) || 0,
+    dislike_count: Number(data.dislike_count) || 0,
   }
 }

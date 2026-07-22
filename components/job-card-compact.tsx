@@ -5,6 +5,7 @@ import { MapPin, Bookmark } from "lucide-react"
 import { formatDaysAgoDate } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 import { CompanyLogo } from "@/components/company-logo"
+import { JobReactionCounts } from "@/components/job-reaction-counts"
 
 const LABELS: Record<string, string> = {
   Engineering: "ინჟინერია",
@@ -114,12 +115,13 @@ export function JobCardCompact({
           </span>
         </div>
 
-        {/* Salary + source + save */}
+        {/* Salary + reactions + source + save */}
         <div className="mt-3 flex items-center justify-between gap-3 pt-2.5">
           <p className="min-w-0 text-[13px] font-semibold tabular-nums leading-none text-foreground">
             {salaryLabel}
           </p>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
+            <JobReactionCounts likes={job.likes} dislikes={job.dislikes} />
             <span className="text-[10px] font-semibold tracking-wide text-muted-foreground">
               {sourceLabel}
             </span>

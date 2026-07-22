@@ -104,6 +104,10 @@ export interface Job {
   descriptionHtml?: string | null
   tags: string[]
   applicants: number
+  /** Thumbs-up reactions (visible on list; toggled on detail). */
+  likes?: number
+  /** Thumbs-down reactions (visible on list; toggled on detail). */
+  dislikes?: number
   hrActive?: boolean
   /** Accepts applications without a CV / portfolio-first roles */
   cvNotRequired?: boolean

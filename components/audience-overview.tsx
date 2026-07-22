@@ -31,6 +31,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { CompanyLogo } from "@/components/company-logo"
 import { JobCardCompact } from "@/components/job-card-compact"
+import { JobReactionCounts } from "@/components/job-reaction-counts"
 import { ListErrorBoundary } from "@/components/list-error-boundary"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job, type JobSource } from "@/lib/jobs"
@@ -117,7 +118,7 @@ const selectorCardClass =
 const EXPIRY_WINDOW_DAYS = 30
 
 const tableGrid =
-  "grid-cols-[minmax(130px,1fr)_minmax(150px,1.2fr)_minmax(110px,0.85fr)_minmax(110px,0.85fr)_minmax(110px,0.9fr)_minmax(100px,0.75fr)_108px]"
+  "grid-cols-[minmax(120px,1fr)_minmax(140px,1.15fr)_minmax(100px,0.8fr)_minmax(100px,0.8fr)_minmax(100px,0.85fr)_minmax(90px,0.7fr)_minmax(88px,0.7fr)_108px]"
 
 function formatSalary(job: Job) {
   try {
@@ -1229,6 +1230,7 @@ export function AudienceOverview({
                     <span>ხელფასი</span>
                     <span>მდებარეობა</span>
                     <span>წყარო</span>
+                    <span>შეფასება</span>
                     <span className="text-right">ნახვა</span>
                   </div>
 
@@ -1284,6 +1286,11 @@ export function AudienceOverview({
                                 <p className="truncate text-[12.5px] font-semibold tracking-wide text-muted-foreground">
                                   {sourceLabel(job.source)}
                                 </p>
+
+                                <JobReactionCounts
+                                  likes={job.likes}
+                                  dislikes={job.dislikes}
+                                />
 
                                 <div className="flex justify-end pl-1">
                                   <Link
