@@ -208,6 +208,8 @@ export function matchesSamushaoFilters(
     skipCategories?: boolean
     skipCities?: boolean
     skipSchedules?: boolean
+    skipWorkModes?: boolean
+    skipExperience?: boolean
     /** Prefer matching these ids when present on the job (avoids sphere/name drift). */
     categoryIds?: number[]
   }
@@ -222,7 +224,11 @@ export function matchesSamushaoFilters(
       ids.includes(job.categoryId)
     if (!byName && !byId) return false
   }
-  if (filters.experience.length > 0 && !filters.experience.includes(jobExperience(job))) {
+  if (
+    !options?.skipExperience &&
+    filters.experience.length > 0 &&
+    !filters.experience.includes(jobExperience(job))
+  ) {
     return false
   }
   if (
@@ -232,7 +238,11 @@ export function matchesSamushaoFilters(
   ) {
     return false
   }
-  if (filters.workModes.length > 0 && !filters.workModes.includes(jobWorkMode(job))) {
+  if (
+    !options?.skipWorkModes &&
+    filters.workModes.length > 0 &&
+    !filters.workModes.includes(jobWorkMode(job))
+  ) {
     return false
   }
   if (!options?.skipCities && filters.cities.length > 0) {

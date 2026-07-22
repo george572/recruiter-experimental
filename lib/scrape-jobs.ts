@@ -213,10 +213,15 @@ export function extractJobsGeLogoFromHtml(
   return full || urls[0] || null
 }
 
-function mapWorkplace(value: string | null | undefined): Workplace {
-  const v = (value || "").toLowerCase()
-  if (/remote|დისტანც|home|მოგზაურ/.test(v)) return "Remote"
-  if (/hybrid|ჰიბრიდ/.test(v)) return "Hybrid"
+function mapWorkplace(...parts: Array<string | null | undefined>): Workplace {
+  const v = parts
+    .filter((p): p is string => Boolean(p && String(p).trim()))
+    .join(" ")
+    .toLowerCase()
+  if (/remote|დისტანც|home|მოგზაურ|freelance|from.?home|work from home/.test(v)) {
+    return "Remote"
+  }
+  if (/hybrid|ჰიბრიდ|შერეულ/.test(v)) return "Hybrid"
   return "On-site"
 }
 
@@ -321,7 +326,13 @@ export function mapScrapedJobToJob(
     company,
     logo,
     location,
-    workplace: mapWorkplace(row.working_type),
+    workplace: mapWorkplace(
+      row.working_type,
+      row.city,
+      row.address,
+      title,
+      description.slice(0, 800)
+    ),
     type: mapJobType(row.employment_type),
     level: mapLevel(row.sphere, title),
     category: categoryFromId || normalizeCategoryName(row.sphere),
@@ -351,6 +362,10 @@ export type ScrapedJobsQuery = {
   employmentType?: string
   salaryMin?: number
   salaryMax?: number
+  /** remote | onsite */
+  workingMode?: "remote" | "onsite"
+  /** Georgian experience labels, OR-matched server-side */
+  experience?: string[]
   order?: "round_robin" | "newest"
 }
 
@@ -377,6 +392,10 @@ function buildJobsParams(options: ScrapedJobsQuery = {}) {
   }
   if (options.city) params.set("city", options.city)
   if (options.employmentType) params.set("employment_type", options.employmentType)
+  if (options.workingMode) params.set("working_mode", options.workingMode)
+  if (options.experience?.length) {
+    params.set("experience", options.experience.join(","))
+  }
   if (options.salaryMin != null && options.salaryMin > 0) {
     params.set("salary_min", String(options.salaryMin))
   }

@@ -687,6 +687,15 @@ export function AudienceOverview({
             filters.schedules[0] === "ნახევარი განაკვეთი" ? "part" : "full"
           )
         }
+        if (filters.workModes.length === 1) {
+          params.set(
+            "working_mode",
+            filters.workModes[0] === "დისტანციური" ? "remote" : "onsite"
+          )
+        }
+        if (filters.experience.length > 0) {
+          params.set("experience", filters.experience.join(","))
+        }
 
         const res = await fetch(`/api/jobs?${params}`)
         if (!res.ok) throw new Error(`jobs page failed: ${res.status}`)
@@ -755,6 +764,8 @@ export function AudienceOverview({
         salaryMin: filters.salaryMin,
         salaryMax: filters.salaryMax,
         schedules: filters.schedules,
+        workModes: filters.workModes,
+        experience: filters.experience,
       }),
     [
       filters.categories,
@@ -762,6 +773,8 @@ export function AudienceOverview({
       filters.salaryMin,
       filters.salaryMax,
       filters.schedules,
+      filters.workModes,
+      filters.experience,
     ]
   )
 
@@ -819,9 +832,11 @@ export function AudienceOverview({
       .filter((id): id is number => id != null && Number.isFinite(id))
   }, [categories, filters.categories])
 
-  // When we send a single city / employment_type to the API, trust that response.
+  // When we send a single city / employment_type / work mode to the API, trust that response.
   const serverScopedCity = filters.cities.length === 1
   const serverScopedSchedule = filters.schedules.length === 1
+  const serverScopedWorkMode = filters.workModes.length === 1
+  const serverScopedExperience = filters.experience.length > 0
 
   const filteredJobs = useMemo(() => {
     // Single category is fetched with category_id — trust the API payload.
@@ -834,6 +849,8 @@ export function AudienceOverview({
           !matchesSamushaoFilters(job, filters, {
             skipCities: serverScopedCity,
             skipSchedules: serverScopedSchedule,
+            skipWorkModes: serverScopedWorkMode,
+            skipExperience: serverScopedExperience,
             categoryIds: selectedCategoryIds,
           })
         ) {
@@ -846,6 +863,8 @@ export function AudienceOverview({
             skipCategories: true,
             skipCities: serverScopedCity,
             skipSchedules: serverScopedSchedule,
+            skipWorkModes: serverScopedWorkMode,
+            skipExperience: serverScopedExperience,
             categoryIds: selectedCategoryIds,
           })
         ) {
@@ -880,6 +899,8 @@ export function AudienceOverview({
     filters,
     serverScopedCity,
     serverScopedSchedule,
+    serverScopedWorkMode,
+    serverScopedExperience,
     selectedCategoryIds,
   ])
 

@@ -18,6 +18,18 @@ export async function GET(request: Request) {
     employmentType: searchParams.get("employment_type") || undefined,
   }
 
+  const workingModeRaw = (searchParams.get("working_mode") || "").toLowerCase()
+  if (workingModeRaw === "remote" || workingModeRaw === "onsite") {
+    query.workingMode = workingModeRaw
+  }
+  const experienceRaw = searchParams.get("experience")
+  if (experienceRaw) {
+    query.experience = experienceRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+
   const categoryIdRaw = searchParams.get("category_id")
   if (categoryIdRaw) {
     const categoryId = Number(categoryIdRaw)
