@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import { JobDetail } from "@/components/job-detail"
+import { JobModalOverlay } from "@/components/job-modal-overlay"
 import { loadJob } from "@/lib/load-job"
 
 type InterceptedJobPageProps = {
@@ -20,8 +21,8 @@ export default async function InterceptedJobPage({
   if (!job) notFound()
 
   return (
-    <div className="fixed inset-0 z-50 bg-background">
+    <JobModalOverlay>
       <JobDetail job={job} />
-    </div>
+    </JobModalOverlay>
   )
 }

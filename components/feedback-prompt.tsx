@@ -2,29 +2,39 @@
 
 import { useEffect, useState, type FormEvent } from "react"
 import { usePathname } from "next/navigation"
-import { Loader2, X } from "lucide-react"
+import { CircleHelp, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const STORAGE_KEY = "recruiter-feedback-prompt"
-const SHOW_DELAY_MS = 8000
+const OPEN_EVENT = "recruiter:feedback-open"
 const MAX_LENGTH = 2000
 
 type PromptState = "hidden" | "open" | "sending" | "thanks"
 
-function wasDismissed() {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1"
-  } catch {
-    return false
-  }
+export function openFeedback() {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT))
 }
 
-function markDismissed() {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, "1")
-  } catch {
-    // ignore quota / private mode
-  }
+export function FeedbackTrigger({
+  className,
+  "aria-label": ariaLabel = "კავშირი ჩვენთან",
+}: {
+  className?: string
+  "aria-label"?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={openFeedback}
+      aria-label={ariaLabel}
+      className={cn(
+        "relative z-10 inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground transition-colors hover:border-border hover:text-foreground",
+        className
+      )}
+    >
+      <CircleHelp className="size-4" strokeWidth={1.75} />
+    </button>
+  )
 }
 
 export function FeedbackPrompt() {
@@ -34,21 +44,15 @@ export function FeedbackPrompt() {
   const [error, setError] = useState<string | null>(null)
   const [entered, setEntered] = useState(false)
 
-  const onAudienceSurface =
-    pathname === "/" ||
-    pathname.startsWith("/vakansiebi") ||
-    pathname.startsWith("/jobs")
-
   useEffect(() => {
-    if (!onAudienceSurface || wasDismissed()) {
-      setState("hidden")
-      setEntered(false)
-      return
+    function onOpen() {
+      setError(null)
+      setState("open")
     }
 
-    const timer = window.setTimeout(() => setState("open"), SHOW_DELAY_MS)
-    return () => window.clearTimeout(timer)
-  }, [onAudienceSurface, pathname])
+    window.addEventListener(OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_EVENT, onOpen)
+  }, [])
 
   useEffect(() => {
     if (state !== "open" && state !== "sending" && state !== "thanks") {
@@ -71,9 +75,12 @@ export function FeedbackPrompt() {
   }, [state])
 
   function dismiss() {
-    markDismissed()
     setEntered(false)
-    window.setTimeout(() => setState("hidden"), 200)
+    window.setTimeout(() => {
+      setState("hidden")
+      setMessage("")
+      setError(null)
+    }, 200)
   }
 
   async function onSubmit(event: FormEvent) {
@@ -98,10 +105,13 @@ export function FeedbackPrompt() {
       })
       if (!res.ok) throw new Error("failed")
       setState("thanks")
-      markDismissed()
       window.setTimeout(() => {
         setEntered(false)
-        window.setTimeout(() => setState("hidden"), 200)
+        window.setTimeout(() => {
+          setState("hidden")
+          setMessage("")
+          setError(null)
+        }, 200)
       }, 1800)
     } catch {
       setState("open")

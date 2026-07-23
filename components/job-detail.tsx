@@ -15,6 +15,7 @@ import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { CompanyLogo } from "@/components/company-logo"
+import { FeedbackTrigger } from "@/components/feedback-prompt"
 import { JobDescriptionBody } from "@/components/job-description-body"
 import { JobReactionControls } from "@/components/job-reaction-controls"
 
@@ -203,7 +204,6 @@ export function JobDetail({
         <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 bg-background px-5 py-3.5 sm:px-6 lg:px-10">
           <Link
             href="/"
-            scroll={false}
             className="relative z-10 inline-flex shrink-0 items-center transition-opacity hover:opacity-70"
           >
             <span className="font-sans text-lg font-semibold text-black dark:text-white">
@@ -211,18 +211,21 @@ export function JobDetail({
             </span>
           </Link>
 
-          <button
-            type="button"
-            onClick={() => setDark((prev) => !prev)}
-            aria-label={dark ? "ღია რეჟიმი" : "მუქი რეჟიმი"}
-            className="relative z-10 inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-          >
-            {dark ? (
-              <Sun className="size-4" strokeWidth={1.75} />
-            ) : (
-              <Moon className="size-4" strokeWidth={1.75} />
-            )}
-          </button>
+          <div className="relative z-10 flex shrink-0 items-center gap-2">
+            <FeedbackTrigger />
+            <button
+              type="button"
+              onClick={() => setDark((prev) => !prev)}
+              aria-label={dark ? "ღია რეჟიმი" : "მუქი რეჟიმი"}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+            >
+              {dark ? (
+                <Sun className="size-4" strokeWidth={1.75} />
+              ) : (
+                <Moon className="size-4" strokeWidth={1.75} />
+              )}
+            </button>
+          </div>
         </header>
 
         <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto no-scrollbar">

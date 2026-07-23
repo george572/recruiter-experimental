@@ -30,6 +30,7 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { CompanyLogo } from "@/components/company-logo"
+import { FeedbackTrigger } from "@/components/feedback-prompt"
 import { JobCardCompact } from "@/components/job-card-compact"
 import { JobReactionCounts } from "@/components/job-reaction-counts"
 import { ListErrorBoundary } from "@/components/list-error-boundary"
@@ -1020,18 +1021,21 @@ export function AudienceOverview({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setDark((prev) => !prev)}
-            aria-label={dark ? "ღია რეჟიმი" : "მუქი რეჟიმი"}
-            className="relative z-10 inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-          >
-            {dark ? (
-              <Sun className="size-4" strokeWidth={1.75} />
-            ) : (
-              <Moon className="size-4" strokeWidth={1.75} />
-            )}
-          </button>
+          <div className="relative z-10 flex shrink-0 items-center gap-2">
+            <FeedbackTrigger />
+            <button
+              type="button"
+              onClick={() => setDark((prev) => !prev)}
+              aria-label={dark ? "ღია რეჟიმი" : "მუქი რეჟიმი"}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+            >
+              {dark ? (
+                <Sun className="size-4" strokeWidth={1.75} />
+              ) : (
+                <Moon className="size-4" strokeWidth={1.75} />
+              )}
+            </button>
+          </div>
         </header>
 
         {/* Mobile search + filters — fixed below header */}

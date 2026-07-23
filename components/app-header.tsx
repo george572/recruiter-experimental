@@ -1,5 +1,6 @@
 import { LogIn, Menu } from "lucide-react"
 import Link from "next/link"
+import { FeedbackTrigger } from "@/components/feedback-prompt"
 
 export function AppHeader() {
   return (
@@ -12,6 +13,7 @@ export function AppHeader() {
       </Link>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <FeedbackTrigger className="border-0 bg-transparent hover:bg-secondary" />
         <button
           type="button"
           aria-label="მენიუ"
