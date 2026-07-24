@@ -1,6 +1,7 @@
 import type { Job, JobSource, JobType, Level, Workplace } from "@/lib/jobs"
 import { JOB_SOURCES } from "@/lib/jobs"
 import { normalizeCategoryName } from "@/lib/samushao-filters"
+import { expandSearchTerms } from "@/lib/search-synonyms"
 
 /** Raw row from Samushao GET /api/scraped-jobs */
 export type ScrapedJobRow = {
@@ -359,6 +360,8 @@ export function mapScrapedJobToJob(
 export type ScrapedJobsQuery = {
   source?: string
   q?: string
+  /** When set, scopes `q` to these fields on the Samushao API. */
+  qFields?: Array<"title" | "company" | "description">
   limit?: number
   offset?: number
   categoryId?: number
@@ -391,6 +394,9 @@ function buildJobsParams(options: ScrapedJobsQuery = {}) {
   params.set("order", options.order || "round_robin")
   if (options.source) params.set("source", options.source)
   if (options.q) params.set("q", options.q)
+  if (options.qFields) {
+    params.set("q_fields", options.qFields.join(","))
+  }
   if (options.categoryId != null && Number.isFinite(options.categoryId)) {
     params.set("category_id", String(options.categoryId))
   }
@@ -409,8 +415,68 @@ function buildJobsParams(options: ScrapedJobsQuery = {}) {
   return params
 }
 
+/** DB text search across all scrape sources via Samushao `q` + `q_fields`. */
 export async function fetchScrapedJobs(
   options: ScrapedJobsQuery = {},
+  categoryNames?: CategoryNameMap
+): Promise<ScrapedJobsPage> {
+  const limit = options.limit ?? 50
+  const offset = options.offset ?? 0
+  const q = options.q?.trim() || ""
+  const terms = q ? expandSearchTerms(q) : []
+
+  // Single term (or no text search) — one upstream request.
+  if (terms.length <= 1) {
+    return fetchScrapedJobsOnce(options, categoryNames)
+  }
+
+  // Bilingual / synonym OR: fetch each term, merge unique jobs.
+  const pages = await Promise.all(
+    terms.map((term) =>
+      fetchScrapedJobsOnce(
+        {
+          ...options,
+          q: term,
+          offset: 0,
+          limit: Math.min(200, Math.max(limit + offset, 100)),
+        },
+        categoryNames
+      )
+    )
+  )
+
+  const seen = new Set<string>()
+  const merged: Job[] = []
+  for (const page of pages) {
+    for (const job of page.jobs) {
+      if (seen.has(job.id)) continue
+      seen.add(job.id)
+      merged.push(job)
+    }
+  }
+
+  const fullyLoaded = pages.every((p) => !p.hasMore)
+  const total = fullyLoaded
+    ? merged.length
+    : Math.max(
+        merged.length,
+        ...pages.map((p) => Number(p.total) || 0)
+      )
+  const slice = merged.slice(offset, offset + limit)
+  const hasMore = offset + slice.length < merged.length || !fullyLoaded
+
+  return {
+    jobs: slice,
+    total,
+    limit,
+    offset,
+    hasMore,
+    nextOffset: hasMore ? offset + slice.length : null,
+  }
+}
+
+async function fetchScrapedJobsOnce(
+  options: ScrapedJobsQuery,
   categoryNames?: CategoryNameMap
 ): Promise<ScrapedJobsPage> {
   const base = getSamushaoApiBaseUrl()

@@ -60,8 +60,72 @@ import { cn } from "@/lib/utils"
 
 type SourceFilter = JobSource | null
 
+type SearchFields = {
+  title: boolean
+  company: boolean
+  description: boolean
+}
+
+const DEFAULT_SEARCH_FIELDS: SearchFields = {
+  title: true,
+  company: true,
+  description: true,
+}
+
+const SEARCH_FIELD_OPTIONS = [
+  { key: "title", label: "სათაურით მოძებნა" },
+  { key: "company", label: "კომპანიის სახელით მოძებნა" },
+  { key: "description", label: "ვაკანსიის აღწერით მოძებნა" },
+] as const
+
 const THEME_KEY = "audience-theme"
 const PAGE_SIZE = 50
+
+function SearchFieldToggles({
+  fields,
+  onChange,
+}: {
+  fields: SearchFields
+  onChange: (fields: SearchFields) => void
+}) {
+  return (
+    <div
+      className="mt-2 flex flex-col gap-1.5 lg:flex-row lg:flex-nowrap lg:items-center lg:gap-x-3 lg:gap-y-0"
+      role="group"
+      aria-label="ძიების ველები"
+    >
+      {SEARCH_FIELD_OPTIONS.map(({ key, label }) => {
+        const checked = fields[key]
+        return (
+          <label
+            key={key}
+            className="inline-flex cursor-pointer items-center gap-1.5"
+          >
+            <span
+              className={cn(
+                "flex size-3.5 shrink-0 items-center justify-center rounded border transition-colors",
+                checked
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card"
+              )}
+            >
+              {checked ? <Check className="size-2" strokeWidth={3} /> : null}
+            </span>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() => onChange({ ...fields, [key]: !checked })}
+              className="sr-only"
+            />
+            <span className="text-[11px] leading-none text-muted-foreground">
+              {label}
+            </span>
+          </label>
+        )
+      })}
+    </div>
+  )
+}
 
 const profileCards = [
   {
@@ -599,6 +663,7 @@ export function AudienceOverview({
   const [selectedSource, setSelectedSource] = useState<SourceFilter>(null)
   const [query, setQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
+  const [searchFields, setSearchFields] = useState<SearchFields>(DEFAULT_SEARCH_FIELDS)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filters, setFilters] = useState<SamushaoFilters>(
     initialFilters ?? DEFAULT_SAMUSHAO_FILTERS
@@ -668,7 +733,14 @@ export function AudienceOverview({
           const apiSource = JOB_SOURCE_TO_API[selectedSource]
           if (apiSource) params.set("source", apiSource)
         }
-        if (debouncedQuery) params.set("q", debouncedQuery)
+        if (debouncedQuery) {
+          params.set("q", debouncedQuery)
+          const fields: string[] = []
+          if (searchFields.title) fields.push("title")
+          if (searchFields.company) fields.push("company")
+          if (searchFields.description) fields.push("description")
+          params.set("q_fields", fields.join(","))
+        }
 
         if (filters.categories.length === 1) {
           const cat = categories.find((c) => c.name === filters.categories[0])
@@ -755,7 +827,7 @@ export function AudienceOverview({
         }
       }
     },
-    [selectedSource, debouncedQuery, filters, categories]
+    [selectedSource, debouncedQuery, searchFields, filters, categories]
   )
 
   const serverFilterKey = useMemo(
@@ -768,6 +840,7 @@ export function AudienceOverview({
         schedules: filters.schedules,
         workModes: filters.workModes,
         experience: filters.experience,
+        searchFields,
       }),
     [
       filters.categories,
@@ -777,6 +850,7 @@ export function AudienceOverview({
       filters.schedules,
       filters.workModes,
       filters.experience,
+      searchFields,
     ]
   )
 
@@ -873,15 +947,7 @@ export function AudienceOverview({
           return false
         }
       }
-      if (debouncedQuery) {
-        const q = debouncedQuery.toLowerCase()
-        const company = String(job.company || "").toLowerCase()
-        const title = String(job.title || "").toLowerCase()
-        const location = String(job.location || "").toLowerCase()
-        if (!company.includes(q) && !title.includes(q) && !location.includes(q)) {
-          return false
-        }
-      }
+      // Text search is applied server-side via q + q_fields (title/company/description).
       return true
     }
     return jobs.filter((job) => {
@@ -897,7 +963,6 @@ export function AudienceOverview({
   }, [
     jobs,
     selectedSource,
-    debouncedQuery,
     filters,
     serverScopedCity,
     serverScopedSchedule,
@@ -995,18 +1060,18 @@ export function AudienceOverview({
 
       <div className="flex h-full min-h-0 w-full flex-col bg-background">
         {/* Header always fixed */}
-        <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 bg-background px-5 py-3.5 sm:px-6 lg:px-10">
+        <header className="relative z-20 grid shrink-0 grid-cols-[1fr_auto] items-start gap-4 bg-background px-5 py-3.5 sm:px-6 lg:grid-cols-[1fr_minmax(0,28rem)_1fr] lg:px-10">
           <a
             href="/"
-            className="relative z-10 inline-flex shrink-0 items-center transition-opacity hover:opacity-70"
+            className="relative z-10 inline-flex h-10 shrink-0 items-center justify-self-start transition-opacity hover:opacity-70"
           >
             <span className="font-sans text-lg font-semibold text-black dark:text-white">
               Recruiter.ge
             </span>
           </a>
 
-          <div className="pointer-events-none absolute inset-x-0 hidden justify-center px-5 sm:px-6 lg:flex lg:px-10">
-            <div className="pointer-events-auto relative w-full max-w-md">
+          <div className="hidden w-full max-w-md justify-self-center lg:block">
+            <div className="relative">
               <Search
                 className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 strokeWidth={1.75}
@@ -1019,9 +1084,10 @@ export function AudienceOverview({
                 className="h-10 w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-foreground/20"
               />
             </div>
+            <SearchFieldToggles fields={searchFields} onChange={setSearchFields} />
           </div>
 
-          <div className="relative z-10 flex shrink-0 items-center gap-2">
+          <div className="relative z-10 flex h-10 shrink-0 items-center justify-self-end gap-2">
             <FeedbackTrigger />
             <button
               type="button"
@@ -1039,36 +1105,39 @@ export function AudienceOverview({
         </header>
 
         {/* Mobile search + filters — fixed below header */}
-        <div className="z-20 flex shrink-0 items-center gap-2 bg-background px-5 pb-3 sm:px-6 lg:hidden">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              strokeWidth={1.75}
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="ძებნა"
-              className="h-10 w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-foreground/20"
-            />
+        <div className="z-20 flex shrink-0 flex-col gap-2 bg-background px-5 pb-3 sm:px-6 lg:hidden">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                strokeWidth={1.75}
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="ძებნა"
+                className="h-10 w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-foreground/20"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setFilterOpen(true)}
+              aria-expanded={filterOpen}
+              className="relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 text-foreground transition-colors hover:border-border active:bg-secondary"
+            >
+              <span className="relative">
+                <SlidersHorizontal className="size-4" strokeWidth={1.75} />
+                {activeFilterCount > 0 ? (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-sm font-medium">ფილტრი</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setFilterOpen(true)}
-            aria-expanded={filterOpen}
-            className="relative inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 text-foreground transition-colors hover:border-border active:bg-secondary"
-          >
-            <span className="relative">
-              <SlidersHorizontal className="size-4" strokeWidth={1.75} />
-              {activeFilterCount > 0 ? (
-                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
-                  {activeFilterCount}
-                </span>
-              ) : null}
-            </span>
-            <span className="text-sm font-medium">ფილტრი</span>
-          </button>
+          <SearchFieldToggles fields={searchFields} onChange={setSearchFields} />
         </div>
 
         <div

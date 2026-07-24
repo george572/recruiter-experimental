@@ -18,6 +18,17 @@ export async function GET(request: Request) {
     employmentType: searchParams.get("employment_type") || undefined,
   }
 
+  const qFieldsRaw = searchParams.get("q_fields")
+  if (qFieldsRaw != null) {
+    const allowed = new Set(["title", "company", "description"] as const)
+    query.qFields = qFieldsRaw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter((f): f is "title" | "company" | "description" =>
+        allowed.has(f as "title" | "company" | "description")
+      )
+  }
+
   const workingModeRaw = (searchParams.get("working_mode") || "").toLowerCase()
   if (workingModeRaw === "remote" || workingModeRaw === "onsite") {
     query.workingMode = workingModeRaw
