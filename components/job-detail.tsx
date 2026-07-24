@@ -14,12 +14,16 @@ import {
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import {
+  applyAudienceThemeClass,
+  readAudienceTheme,
+  writeAudienceTheme,
+} from "@/lib/audience-theme"
 import { CompanyLogo } from "@/components/company-logo"
 import { FeedbackTrigger } from "@/components/feedback-prompt"
 import { JobDescriptionBody } from "@/components/job-description-body"
 import { JobReactionControls } from "@/components/job-reaction-controls"
 
-const THEME_KEY = "audience-theme"
 const EXPIRY_WINDOW_DAYS = 30
 const SIMILAR_JOBS_COUNT = 4
 
@@ -177,15 +181,16 @@ export function JobDetail({
   }, [job.id, job.categoryId])
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(THEME_KEY)
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    setDark(stored === "dark" || (!stored && prefersDark))
+    const isDark = readAudienceTheme() === "dark"
+    setDark(isDark)
+    applyAudienceThemeClass(isDark)
     setThemeReady(true)
   }, [])
 
   useEffect(() => {
     if (!themeReady) return
-    window.localStorage.setItem(THEME_KEY, dark ? "dark" : "light")
+    writeAudienceTheme(dark ? "dark" : "light")
+    applyAudienceThemeClass(dark)
   }, [dark, themeReady])
 
   return (

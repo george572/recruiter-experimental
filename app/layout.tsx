@@ -78,8 +78,13 @@ export default function RootLayout({
   modal: React.ReactNode
 }>) {
   return (
-    <html lang="ka" className="h-full bg-background">
+    <html lang="ka" className="light h-full bg-background" style={{ colorScheme: "light" }}>
       <body className="h-full overflow-hidden font-sans antialiased">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("audience-theme");var d=t==="dark";var r=document.documentElement;r.classList.toggle("dark",d);r.classList.toggle("light",!d);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.classList.add("light");document.documentElement.style.colorScheme="light";}})();`,
+          }}
+        />
         {children}
         {modal}
         <VisitorBootstrap />

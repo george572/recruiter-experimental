@@ -56,6 +56,11 @@ import {
   type SamushaoFilters,
 } from "@/lib/samushao-filters"
 import type { CategoryCount } from "@/lib/category-counts"
+import {
+  applyAudienceThemeClass,
+  readAudienceTheme,
+  writeAudienceTheme,
+} from "@/lib/audience-theme"
 import { cn } from "@/lib/utils"
 
 type SourceFilter = JobSource | null
@@ -78,7 +83,6 @@ const SEARCH_FIELD_OPTIONS = [
   { key: "description", label: "ვაკანსიის აღწერით მოძებნა" },
 ] as const
 
-const THEME_KEY = "audience-theme"
 const PAGE_SIZE = 50
 
 function SearchFieldToggles({
@@ -698,15 +702,16 @@ export function AudienceOverview({
   }, [sources, initialTotal, initialJobs.length])
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(THEME_KEY)
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    setDark(stored === "dark" || (!stored && prefersDark))
+    const isDark = readAudienceTheme() === "dark"
+    setDark(isDark)
+    applyAudienceThemeClass(isDark)
     setThemeReady(true)
   }, [])
 
   useEffect(() => {
     if (!themeReady) return
-    window.localStorage.setItem(THEME_KEY, dark ? "dark" : "light")
+    writeAudienceTheme(dark ? "dark" : "light")
+    applyAudienceThemeClass(dark)
   }, [dark, themeReady])
 
   useEffect(() => {
