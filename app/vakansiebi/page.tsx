@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { AppHeader } from "@/components/app-header"
 import { FilterSlidePanel } from "@/components/filter-slide-panel"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
@@ -11,7 +11,7 @@ import { JobCarousel } from "@/components/job-carousel"
 import { JOBS } from "@/lib/jobs"
 import { contentShellClass } from "@/lib/layout"
 import { DEFAULT_FILTERS, type Filters } from "@/lib/filters"
-import { recordSiteSearch } from "@/lib/record-search"
+import { useRecordSiteSearch } from "@/lib/record-search"
 
 export default function VakansiebiPage() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
@@ -19,20 +19,8 @@ export default function VakansiebiPage() {
   const [filterOpen, setFilterOpen] = useState(false)
   const [statisticsOpen, setStatisticsOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [debouncedQuery, setDebouncedQuery] = useState("")
 
-  useEffect(() => {
-    const timer = window.setTimeout(
-      () => setDebouncedQuery(filters.query.trim()),
-      350
-    )
-    return () => window.clearTimeout(timer)
-  }, [filters.query])
-
-  useEffect(() => {
-    if (!debouncedQuery) return
-    void recordSiteSearch(debouncedQuery)
-  }, [debouncedQuery])
+  useRecordSiteSearch(filters.query)
 
   const filteredJobs = useMemo(() => {
     const q = filters.query.trim().toLowerCase()
