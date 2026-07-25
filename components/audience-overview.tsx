@@ -36,6 +36,7 @@ import { JobReactionCounts } from "@/components/job-reaction-counts"
 import { ListErrorBoundary } from "@/components/list-error-boundary"
 import { formatDaysAgoDate, formatInt } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job, type JobSource } from "@/lib/jobs"
+import { recordSiteSearch } from "@/lib/record-search"
 import {
   JOB_SOURCE_TO_API,
   SOURCE_KEY_TO_JOB_SOURCE,
@@ -718,6 +719,11 @@ export function AudienceOverview({
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 350)
     return () => window.clearTimeout(timer)
   }, [query])
+
+  useEffect(() => {
+    if (!debouncedQuery) return
+    void recordSiteSearch(debouncedQuery)
+  }, [debouncedQuery])
 
   const fetchPage = useCallback(
     async (offset: number, replace: boolean) => {
