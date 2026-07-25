@@ -667,7 +667,8 @@ export function AudienceOverview({
   const [themeReady, setThemeReady] = useState(false)
   const [selectedSource, setSelectedSource] = useState<SourceFilter>(null)
   const [query, setQuery] = useState("")
-  const [debouncedQuery, setDebouncedQuery] = useState("")
+  /** Applied only on Enter / search icon — not while typing. */
+  const [appliedQuery, setAppliedQuery] = useState("")
   const [searchFields, setSearchFields] = useState<SearchFields>(DEFAULT_SEARCH_FIELDS)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filters, setFilters] = useState<SamushaoFilters>(
@@ -715,13 +716,11 @@ export function AudienceOverview({
     applyAudienceThemeClass(dark)
   }, [dark, themeReady])
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 350)
-    return () => window.clearTimeout(timer)
+  const submitSearch = useCallback(() => {
+    setAppliedQuery(query.trim())
   }, [query])
 
-  // Separate from filter debounce — that fires on every short pause while typing.
-  useRecordSiteSearch(query)
+  useRecordSiteSearch(appliedQuery)
 
   const fetchPage = useCallback(
     async (offset: number, replace: boolean) => {
@@ -742,8 +741,8 @@ export function AudienceOverview({
           const apiSource = JOB_SOURCE_TO_API[selectedSource]
           if (apiSource) params.set("source", apiSource)
         }
-        if (debouncedQuery) {
-          params.set("q", debouncedQuery)
+        if (appliedQuery) {
+          params.set("q", appliedQuery)
           const fields: string[] = []
           if (searchFields.title) fields.push("title")
           if (searchFields.company) fields.push("company")
@@ -836,7 +835,7 @@ export function AudienceOverview({
         }
       }
     },
-    [selectedSource, debouncedQuery, searchFields, filters, categories]
+    [selectedSource, appliedQuery, searchFields, filters, categories]
   )
 
   const serverFilterKey = useMemo(
@@ -874,7 +873,7 @@ export function AudienceOverview({
       return
     }
     void fetchPageRef.current(0, true)
-  }, [selectedSource, debouncedQuery, serverFilterKey])
+  }, [selectedSource, appliedQuery, serverFilterKey])
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingLock.current || loadingMore || loadingReset) return
@@ -1080,19 +1079,29 @@ export function AudienceOverview({
           </a>
 
           <div className="hidden w-full max-w-md justify-self-center lg:block">
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                strokeWidth={1.75}
-              />
+            <form
+              className="relative"
+              onSubmit={(e) => {
+                e.preventDefault()
+                submitSearch()
+              }}
+            >
+              <button
+                type="submit"
+                aria-label="ძებნა"
+                className="absolute left-3 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Search className="size-4" strokeWidth={1.75} />
+              </button>
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="ძებნა"
+                enterKeyHint="search"
                 className="h-10 w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-foreground/20"
               />
-            </div>
+            </form>
             <SearchFieldToggles fields={searchFields} onChange={setSearchFields} />
           </div>
 
@@ -1116,19 +1125,29 @@ export function AudienceOverview({
         {/* Mobile search + filters — fixed below header */}
         <div className="z-20 flex shrink-0 flex-col gap-2 bg-background px-5 pb-3 sm:px-6 lg:hidden">
           <div className="flex items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                strokeWidth={1.75}
-              />
+            <form
+              className="relative min-w-0 flex-1"
+              onSubmit={(e) => {
+                e.preventDefault()
+                submitSearch()
+              }}
+            >
+              <button
+                type="submit"
+                aria-label="ძებნა"
+                className="absolute left-3 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Search className="size-4" strokeWidth={1.75} />
+              </button>
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="ძებნა"
+                enterKeyHint="search"
                 className="h-10 w-full rounded-xl border border-border/60 bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-foreground/20"
               />
-            </div>
+            </form>
             <button
               type="button"
               onClick={() => setFilterOpen(true)}
