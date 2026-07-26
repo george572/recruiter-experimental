@@ -34,7 +34,7 @@ import { FeedbackTrigger } from "@/components/feedback-prompt"
 import { JobCardCompact } from "@/components/job-card-compact"
 import { JobReactionCounts } from "@/components/job-reaction-counts"
 import { ListErrorBoundary } from "@/components/list-error-boundary"
-import { formatDaysAgoDate, formatInt } from "@/lib/format"
+import { formatDaysAgoDate, formatInt, formatIsoDateKa } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job, type JobSource } from "@/lib/jobs"
 import { useRecordSiteSearch } from "@/lib/record-search"
 import {
@@ -185,8 +185,6 @@ const panelClass =
 const selectorCardClass =
   "rounded-2xl border border-border/60 bg-card px-3.5 py-3 shadow-[0_1px_3px_rgba(20,24,40,0.04)]"
 
-const EXPIRY_WINDOW_DAYS = 30
-
 const tableGrid =
   "grid-cols-[minmax(120px,1fr)_minmax(140px,1.15fr)_minmax(100px,0.8fr)_minmax(100px,0.8fr)_minmax(100px,0.85fr)_minmax(90px,0.7fr)_minmax(88px,0.7fr)_108px]"
 
@@ -205,7 +203,7 @@ function sourceLabel(source: JobSource) {
 function jobDates(job: Job, nowMs?: number) {
   return {
     uploaded: formatDaysAgoDate(job.postedDaysAgo, nowMs),
-    expires: formatDaysAgoDate(job.postedDaysAgo - EXPIRY_WINDOW_DAYS, nowMs),
+    expires: formatIsoDateKa(job.expiresAt) || "—",
   }
 }
 

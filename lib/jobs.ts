@@ -99,6 +99,8 @@ export interface Job {
   salaryMax: number
   currency: string
   postedDaysAgo: number
+  /** Source-site application deadline (ISO), when known — never invent. */
+  expiresAt?: string | null
   description: string
   /** Sanitized HTML for the detail page (line breaks, bold, lists). */
   descriptionHtml?: string | null

@@ -12,7 +12,7 @@ import {
   Sun,
 } from "lucide-react"
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
-import { formatDaysAgoDate, formatInt } from "@/lib/format"
+import { formatDaysAgoDate, formatInt, formatIsoDateKa } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import {
   applyAudienceThemeClass,
@@ -24,7 +24,6 @@ import { FeedbackTrigger } from "@/components/feedback-prompt"
 import { JobDescriptionBody } from "@/components/job-description-body"
 import { JobReactionControls } from "@/components/job-reaction-controls"
 
-const EXPIRY_WINDOW_DAYS = 30
 const SIMILAR_JOBS_COUNT = 4
 
 const LABELS: Record<string, string> = {
@@ -146,7 +145,7 @@ export function JobDetail({
   const applyInFlight = useRef(false)
   const source = sourceMeta(job.source)
   const uploaded = formatDaysAgoDate(job.postedDaysAgo)
-  const expires = formatDaysAgoDate(job.postedDaysAgo - EXPIRY_WINDOW_DAYS)
+  const expires = formatIsoDateKa(job.expiresAt) || "—"
   const similarJobs = useMemo(
     () => getSimilarJobs(job, similarPool),
     [job, similarPool]

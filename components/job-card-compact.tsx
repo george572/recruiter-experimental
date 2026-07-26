@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { MapPin, Bookmark } from "lucide-react"
-import { formatDaysAgoDate } from "@/lib/format"
+import { formatDaysAgoDate, formatIsoDateKa } from "@/lib/format"
 import { JOB_SOURCES, formatJobSalary, type Job } from "@/lib/jobs"
 import { CompanyLogo } from "@/components/company-logo"
 import { JobReactionCounts } from "@/components/job-reaction-counts"
@@ -27,8 +27,6 @@ const LABELS: Record<string, string> = {
   Senior: "სენიორი",
   Lead: "ლიდი",
 }
-
-const EXPIRY_WINDOW_DAYS = 30
 
 function cityOnly(location: string | null | undefined) {
   const value = String(location || "").trim()
@@ -57,10 +55,7 @@ export function JobCardCompact({
 }: JobCardCompactProps) {
   const place = dense ? cityOnly(job.location) : String(job.location || "")
   const uploaded = formatDaysAgoDate(Number(job.postedDaysAgo) || 0, nowMs)
-  const expires = formatDaysAgoDate(
-    (Number(job.postedDaysAgo) || 0) - EXPIRY_WINDOW_DAYS,
-    nowMs
-  )
+  const expires = formatIsoDateKa(job.expiresAt) || "—"
   const sourceLabel =
     JOB_SOURCES.find((item) => item.id === job.source)?.label ?? String(job.source || "")
   let salaryLabel = "შეთანხმებით"

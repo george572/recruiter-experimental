@@ -34,3 +34,21 @@ export function formatDaysAgoDate(daysAgo: number, nowMs?: number): string {
   const year = date.getUTCFullYear()
   return `${day} ${month}. ${year}`
 }
+
+/** Format an ISO / date string in Tbilisi calendar day (ka short month). */
+export function formatIsoDateKa(iso: string | null | undefined): string {
+  if (!iso) return ""
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ""
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tbilisi",
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  }).formatToParts(date)
+  const day = Number(parts.find((p) => p.type === "day")?.value || 0)
+  const monthIdx = Number(parts.find((p) => p.type === "month")?.value || 1) - 1
+  const year = Number(parts.find((p) => p.type === "year")?.value || 0)
+  const month = KA_MONTHS_SHORT[monthIdx] ?? "იან"
+  return `${day} ${month}. ${year}`
+}

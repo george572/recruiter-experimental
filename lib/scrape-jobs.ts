@@ -29,6 +29,8 @@ export type ScrapedJobRow = {
   click_count?: number | null
   like_count?: number | null
   dislike_count?: number | null
+  /** Source-site application deadline */
+  expires_at?: string | null
   scraped_at: string | null
   updated_at?: string | null
   created_at?: string | null
@@ -345,6 +347,7 @@ export function mapScrapedJobToJob(
     salaryMax: salaryMax || salaryMin,
     currency,
     postedDaysAgo: daysAgoFrom(row.scraped_at || row.created_at),
+    expiresAt: row.expires_at || null,
     description,
     descriptionHtml,
     tags,

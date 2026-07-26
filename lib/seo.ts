@@ -93,7 +93,6 @@ function isoCurrency(currency: string | null | undefined): string {
 }
 
 const DAY_MS = 1000 * 60 * 60 * 24
-const EXPIRY_WINDOW_DAYS = 30
 
 /** Date (YYYY-MM-DD) a job was posted, derived from postedDaysAgo. */
 function datePosted(job: Job, nowMs = Date.now()): string {
@@ -101,10 +100,12 @@ function datePosted(job: Job, nowMs = Date.now()): string {
   return new Date(ms).toISOString().slice(0, 10)
 }
 
-/** Expiry timestamp (posted + 30 days), matching the detail page window. */
-function validThrough(job: Job, nowMs = Date.now()): string {
-  const ms = nowMs - (job.postedDaysAgo - EXPIRY_WINDOW_DAYS) * DAY_MS
-  return `${new Date(ms).toISOString().slice(0, 10)}T23:59:59`
+/** Source-site deadline when known; otherwise omit (never invent +30d). */
+function validThrough(job: Job): string | null {
+  if (!job.expiresAt) return null
+  const d = new Date(job.expiresAt)
+  if (Number.isNaN(d.getTime())) return null
+  return `${d.toISOString().slice(0, 10)}T23:59:59`
 }
 
 /**
@@ -132,7 +133,6 @@ export function buildJobPostingJsonLd(
       value: String(job.id),
     },
     datePosted: datePosted(job, nowMs),
-    validThrough: validThrough(job, nowMs),
     employmentType: schemaEmploymentType(job.type),
     hiringOrganization: {
       "@type": "Organization",
@@ -155,6 +155,9 @@ export function buildJobPostingJsonLd(
     url,
     directApply: false,
   }
+
+  const through = validThrough(job)
+  if (through) data.validThrough = through
 
   if (isRemote) {
     data.jobLocationType = "TELECOMMUTE"
