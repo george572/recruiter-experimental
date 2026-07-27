@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import {
   RECENT_STORAGE_KEY,
   pushLocalRecentSearch,
@@ -8,6 +9,7 @@ import {
   recordSiteSearch,
 } from "@/lib/search/recent-searches";
 import { getOrCreateVisitorId } from "@/lib/visitor-id";
+import { searchPath } from "@/lib/search/seo-keywords";
 
 const COLUMN_COUNT = 8;
 
@@ -178,10 +180,10 @@ export function SearchBox({
   }
 
   function pickSuggestion(query: string) {
+    // Navigation is via <Link href={searchPath(...)}>; only remember + close.
     onChange(query);
     closeMenu();
     rememberSearch(query);
-    onSubmit(query);
     requestAnimationFrame(() => inputRef.current?.blur());
   }
 
@@ -333,14 +335,17 @@ export function SearchBox({
           aria-label="სწრაფი ძებნა"
         >
           {QUICK_SEARCHES.map((label) => (
-            <button
+            <Link
               key={label}
-              type="button"
-              onClick={() => pickSuggestion(label)}
+              href={searchPath(label)}
+              onClick={() => {
+                pushLocalRecentSearch(label, COLUMN_COUNT);
+                void recordSiteSearch(label);
+              }}
               className="max-w-full rounded-full border border-border bg-white px-3.5 py-2 text-[13px] leading-snug text-foreground shadow-soft-sm transition-[background-color,border-color,transform] active:scale-[0.98] active:bg-slate-50 sm:px-4 sm:py-2 sm:text-sm sm:hover:border-foreground/20 sm:hover:bg-slate-50"
             >
               <span className="block truncate">{label}</span>
-            </button>
+            </Link>
           ))}
         </div>
       ) : null}
@@ -382,8 +387,8 @@ function SuggestionColumn({
       <ul className="pb-2">
         {queries.map((suggestion) => (
           <li key={`${title}-${suggestion}`} role="option">
-            <button
-              type="button"
+            <Link
+              href={searchPath(suggestion)}
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => onPick(suggestion)}
               className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-[15px] text-foreground active:bg-slate-50 sm:min-h-0 sm:py-2.5 sm:hover:opacity-70"
@@ -394,7 +399,7 @@ function SuggestionColumn({
                 <TrendIcon className="size-4 shrink-0 text-muted-foreground" />
               )}
               <span className="truncate">{suggestion}</span>
-            </button>
+            </Link>
           </li>
         ))}
       </ul>

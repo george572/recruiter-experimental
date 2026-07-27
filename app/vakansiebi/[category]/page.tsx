@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { AudienceOverview } from "@/components/audience-overview"
 import { loadListingData } from "@/lib/listing"
@@ -11,6 +12,10 @@ import {
   buildItemListJsonLd,
   jobPath,
 } from "@/lib/seo"
+import {
+  getHomeKeywordLinks,
+  searchPath,
+} from "@/lib/search/seo-keywords"
 
 export const dynamic = "force-dynamic"
 
@@ -111,6 +116,29 @@ export default async function CategoryPage({ params }: Props) {
         initialFilters={initialFilters}
         renderNowMs={Date.now()}
       />
+
+      <nav
+        aria-label="მსგავსი ძებნები"
+        className="border-t border-border bg-background px-4 py-6 sm:px-6"
+      >
+        <div className="mx-auto w-full max-w-3xl">
+          <h2 className="text-sm font-semibold text-foreground">
+            მსგავსი ვაკანსიები
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-sm">
+            {getHomeKeywordLinks(12).map((k) => (
+              <li key={k.slug}>
+                <Link
+                  href={searchPath(k.query)}
+                  className="text-foreground/80 underline-offset-2 hover:underline"
+                >
+                  {k.query}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
     </>
   )
 }

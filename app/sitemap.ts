@@ -8,6 +8,7 @@ import {
   categoryPath,
   cityPath,
 } from "@/lib/taxonomy"
+import { collectIndexableKeywords, searchPath } from "@/lib/search/seo-keywords"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 3600
@@ -78,6 +79,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   )
 
+  const keywords = await collectIndexableKeywords(400)
+  const searchRoutes: MetadataRoute.Sitemap = keywords.map((k) => ({
+    url: `${SITE_URL}${searchPath(k.query)}`,
+    lastModified: now,
+    changeFrequency: "daily",
+    priority: 0.75,
+  }))
+
   const jobs = await collectJobs()
   const dayMs = 1000 * 60 * 60 * 24
 
@@ -88,5 +97,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  return [...staticRoutes, ...categoryRoutes, ...cityRoutes, ...jobRoutes]
+  return [
+    ...staticRoutes,
+    ...searchRoutes,
+    ...categoryRoutes,
+    ...cityRoutes,
+    ...jobRoutes,
+  ]
 }

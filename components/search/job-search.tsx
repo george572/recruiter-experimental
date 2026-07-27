@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   SearchResponse,
   SmartFiltersPayload,
@@ -11,6 +11,7 @@ import { SearchBox } from "@/components/search/search-box";
 import { LoadingSpinner } from "@/components/search/loading-spinner";
 import { JobResultItem } from "@/components/search/job-result-item";
 import { Pagination } from "@/components/search/pagination";
+import { slugifyQuery } from "@/lib/search/seo-keywords";
 
 type View = "home" | "loading" | "results";
 
@@ -20,6 +21,12 @@ type PageCacheEntry = {
   results: JobResult[];
   total: number;
   hasMore: boolean;
+};
+
+type JobSearchProps = {
+  /** When set (SSR /search/[slug]), skip the hero and load this query. */
+  initialQuery?: string;
+  initialPage?: number;
 };
 
 function filtersToParams(filters: SmartFiltersPayload): URLSearchParams {
@@ -101,11 +108,13 @@ function filterChips(filters: SmartFiltersPayload): string[] {
   return chips;
 }
 
-function searchHref(q: string, page = 1): string {
+/** Indexable /search/{slug}?q=…&page=… URLs (q kept for exact query fidelity). */
+function hrefForSearch(q: string, page = 1): string {
+  const slug = slugifyQuery(q);
   const params = new URLSearchParams();
   params.set("q", q);
   if (page > 1) params.set("page", String(page));
-  return `/?${params.toString()}`;
+  return `/search/${encodeURIComponent(slug)}?${params.toString()}`;
 }
 
 /** Prefer the API's exact total; only infer an end from a short final page. */
@@ -125,15 +134,23 @@ function resolveTotal(
   return Math.max(reportedTotal, offset + resultCount);
 }
 
-export function JobSearch() {
+export function JobSearch({
+  initialQuery = "",
+  initialPage = 1,
+}: JobSearchProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const urlQuery = (searchParams.get("q") || "").trim();
-  const urlPageRaw = Number(searchParams.get("page") || "1");
+  const urlQuery =
+    (searchParams.get("q") || "").trim() || initialQuery.trim();
+  const urlPageRaw = Number(
+    searchParams.get("page") || String(initialPage || "1"),
+  );
   const urlPage =
     Number.isFinite(urlPageRaw) && urlPageRaw >= 1
       ? Math.floor(urlPageRaw)
       : 1;
+  const embedded = Boolean(initialQuery.trim()) || pathname.startsWith("/search/");
 
   const [query, setQuery] = useState(urlQuery);
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -460,7 +477,7 @@ export function JobSearch() {
       return;
     }
 
-    router.push(searchHref(q, 1));
+    router.push(hrefForSearch(q, 1));
   }
 
   function goToPage(nextPage: number) {
@@ -470,7 +487,7 @@ export function JobSearch() {
       return;
     }
     jumpTop();
-    router.push(searchHref(q, nextPage));
+    router.push(hrefForSearch(q, nextPage));
   }
 
   function resetToHome() {
@@ -492,7 +509,11 @@ export function JobSearch() {
     return (
       <main
         ref={mainRef}
-        className="h-full flex-1 overflow-y-auto px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        className={
+          embedded
+            ? "flex-1 px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+            : "h-full flex-1 overflow-y-auto px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        }
       >
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col items-center justify-center py-10">
           <div className="mb-6 w-full px-1 text-center animate-rise sm:mb-10">
@@ -523,7 +544,14 @@ export function JobSearch() {
   }
 
   return (
-    <main ref={mainRef} className="h-full flex-1 overflow-y-auto">
+    <main
+      ref={mainRef}
+      className={
+        embedded
+          ? "flex-1"
+          : "h-full flex-1 overflow-y-auto"
+      }
+    >
       <header className="sticky top-0 z-10 border-b border-border bg-white/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="flex flex-col gap-2.5 px-3 py-2.5 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-8 sm:px-6 sm:py-3.5">
           <button

@@ -14,31 +14,9 @@ declare global {
   }
 }
 
-/**
- * GA4 "Page path" strips query strings, so /?q=foo all collapse to "/".
- * Map search UI URLs to virtual paths that show as distinct rows in Realtime.
- */
-function analyticsPagePath(
-  pathname: string,
-  searchParams: URLSearchParams,
-): string {
-  const q = (searchParams.get("q") || "").trim()
-  const pageRaw = Number(searchParams.get("page") || "1")
-  const page =
-    Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1
-
-  if ((pathname === "/" || pathname === "") && q) {
-    const base = `/search/${encodeURIComponent(q)}`
-    return page > 1 ? `${base}/p/${page}` : base
-  }
-
-  const qs = searchParams.toString()
-  return qs ? `${pathname}?${qs}` : pathname || "/"
-}
-
 function analyticsTitle(pathname: string, searchParams: URLSearchParams): string {
   const q = (searchParams.get("q") || "").trim()
-  if ((pathname === "/" || pathname === "") && q) {
+  if (pathname.startsWith("/search/") && q) {
     const pageRaw = Number(searchParams.get("page") || "1")
     const page =
       Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1
@@ -52,22 +30,32 @@ function analyticsTitle(pathname: string, searchParams: URLSearchParams): string
 function sendPageView(pathname: string, searchParams: URLSearchParams) {
   if (typeof window.gtag !== "function") return false
 
-  const pagePath = analyticsPagePath(pathname, searchParams)
+  const qs = searchParams.toString()
+  // Real /search/... routes — path only (GA Page path drops query strings).
+  const pagePath = pathname.startsWith("/search/")
+    ? pathname
+    : qs
+      ? `${pathname}?${qs}`
+      : pathname || "/"
   const pageTitle = analyticsTitle(pathname, searchParams)
   const q = (searchParams.get("q") || "").trim()
 
-  // Preferred SPA pattern for GA4 — updates the current page and sends page_view.
   window.gtag("config", GA_MEASUREMENT_ID, {
     page_path: pagePath,
     page_title: pageTitle,
     page_location: window.location.href,
   })
 
-  if (q) {
-    window.gtag("event", "search", {
-      search_term: q,
-      page_path: pagePath,
-    })
+  if (q || pathname.startsWith("/search/")) {
+    const term =
+      q ||
+      decodeURIComponent(pathname.replace(/^\/search\//, "").split("/")[0] || "")
+    if (term) {
+      window.gtag("event", "search", {
+        search_term: term,
+        page_path: pagePath,
+      })
+    }
   }
 
   return true
@@ -92,7 +80,6 @@ function GaRouteListener() {
         lastKeyRef.current = key
         return
       }
-      // gtag.js may not be ready on first paint.
       if (tries++ < 40) {
         window.setTimeout(tick, 100)
       }
@@ -109,7 +96,7 @@ function GaRouteListener() {
 
 /**
  * Google Analytics 4 (gtag.js) — production only.
- * Search navigations become /search/<query> page paths so Realtime is usable.
+ * Real /search/[slug] paths show as distinct rows in Realtime.
  */
 export function GoogleAnalytics() {
   if (process.env.NODE_ENV !== "production") return null
