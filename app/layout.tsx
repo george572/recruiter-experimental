@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Bakbak_One } from 'next/font/google'
 import '@fontsource/google-sans/georgian.css'
 import '@fontsource/google-sans/latin.css'
 import { FeedbackPrompt } from '@/components/feedback-prompt'
@@ -14,6 +15,13 @@ import {
   SITE_URL,
 } from '@/lib/seo'
 import './globals.css'
+
+const brandFont = Bakbak_One({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-brand-face',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -78,7 +86,11 @@ export default function RootLayout({
   modal: React.ReactNode
 }>) {
   return (
-    <html lang="ka" className="light h-full bg-background" style={{ colorScheme: "light" }}>
+    <html
+      lang="ka"
+      className={`light h-full bg-background ${brandFont.variable}`}
+      style={{ colorScheme: "light" }}
+    >
       <body className="h-full overflow-hidden font-sans antialiased">
         <script
           dangerouslySetInnerHTML={{

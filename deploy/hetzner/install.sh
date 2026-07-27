@@ -72,6 +72,12 @@ if [[ ! -f "$MAIN_ENV" ]]; then
   exit 1
 fi
 
+# Pull Gemini key from Samushao .env when present (smart search on recruiter.ge).
+GEMINI_API_KEY_VALUE="$(grep -E '^GEMINI_API_KEY=' "$MAIN_ENV" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+if [[ -z "${GEMINI_API_KEY_VALUE}" && -f "$OUT_ENV" ]]; then
+  GEMINI_API_KEY_VALUE="$(grep -E '^GEMINI_API_KEY=' "$OUT_ENV" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+
 {
   echo "NODE_ENV=production"
   echo "PORT=4004"
@@ -80,6 +86,10 @@ fi
   echo "NEXT_PUBLIC_API_BASE_URL=http://app:4000"
   echo "NEXT_PUBLIC_SITE_URL=https://recruiter.ge"
   echo "NEXT_PUBLIC_GA_MEASUREMENT_ID=G-3T11JCESTD"
+  if [[ -n "${GEMINI_API_KEY_VALUE}" ]]; then
+    echo "GEMINI_API_KEY=${GEMINI_API_KEY_VALUE}"
+  fi
+  echo "GEMINI_MODEL=gemini-3.1-flash-lite"
 } > "$OUT_ENV"
 
 echo "[recruiter-platform] docker build + start..."
