@@ -54,61 +54,98 @@ export function SearchBox({
     setMine(readLocalRecentSearches(COLUMN_COUNT));
 
     let cancelled = false;
+    const visitorUid = getOrCreateVisitorId();
 
-    async function loadSuggestions() {
-      const visitorUid = getOrCreateVisitorId();
+    function withoutMine(queries: string[], mineList: string[]) {
+      const blocked = new Set(
+        mineList.map((q) => q.trim().toLowerCase()).filter(Boolean),
+      );
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const q of queries) {
+        const trimmed = q.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLowerCase();
+        if (blocked.has(key) || seen.has(key)) continue;
+        seen.add(key);
+        out.push(trimmed);
+        if (out.length >= COLUMN_COUNT) break;
+      }
+      return out;
+    }
 
+    async function loadRecent() {
+      if (!visitorUid) return;
       try {
-        const [recentRes, liveRes] = await Promise.all([
-          visitorUid
-            ? fetch(
-                `/api/recent-searches?visitor_uid=${encodeURIComponent(visitorUid)}&limit=${COLUMN_COUNT}`,
-              )
-            : Promise.resolve(null),
-          fetch(`/api/live-searches?limit=${COLUMN_COUNT}`),
-        ]);
-
-        if (cancelled) return;
-
-        if (recentRes?.ok) {
-          const data = (await recentRes.json().catch(() => null)) as {
-            queries?: string[];
-          } | null;
-          if (Array.isArray(data?.queries) && data.queries.length > 0) {
-            const merged = mergeRecent(
-              data.queries,
-              readLocalRecentSearches(COLUMN_COUNT),
-            );
-            setMine(merged);
-            try {
-              window.localStorage.setItem(
-                RECENT_STORAGE_KEY,
-                JSON.stringify(merged),
-              );
-            } catch {
-              // ignore
-            }
-          }
-        }
-
-        if (liveRes.ok) {
-          const data = (await liveRes.json().catch(() => null)) as {
-            queries?: string[];
-          } | null;
-          if (Array.isArray(data?.queries) && data.queries.length > 0) {
-            setOthers(data.queries.slice(0, COLUMN_COUNT));
-          }
+        const recentRes = await fetch(
+          `/api/recent-searches?visitor_uid=${encodeURIComponent(visitorUid)}&limit=${COLUMN_COUNT}`,
+        );
+        if (cancelled || !recentRes.ok) return;
+        const data = (await recentRes.json().catch(() => null)) as {
+          queries?: string[];
+        } | null;
+        if (!Array.isArray(data?.queries) || data.queries.length === 0) return;
+        const merged = mergeRecent(
+          data.queries,
+          readLocalRecentSearches(COLUMN_COUNT),
+        );
+        setMine(merged);
+        try {
+          window.localStorage.setItem(
+            RECENT_STORAGE_KEY,
+            JSON.stringify(merged),
+          );
+        } catch {
+          // ignore
         }
       } catch {
-        // Keep local recent; leave others empty until a real response arrives.
+        // Keep local recent.
       }
     }
 
-    void loadSuggestions();
+    async function loadLiveOthers() {
+      try {
+        const qs = new URLSearchParams({
+          limit: String(COLUMN_COUNT * 2),
+        });
+        if (visitorUid) qs.set("visitor_uid", visitorUid);
+        const liveRes = await fetch(`/api/live-searches?${qs}`, {
+          cache: "no-store",
+        });
+        if (cancelled || !liveRes.ok) return;
+        const data = (await liveRes.json().catch(() => null)) as {
+          queries?: string[];
+        } | null;
+        if (!Array.isArray(data?.queries)) return;
+        const localMine = readLocalRecentSearches(COLUMN_COUNT * 3);
+        setOthers(withoutMine(data.queries, localMine));
+      } catch {
+        // Leave previous others until the next poll.
+      }
+    }
+
+    void loadRecent().then(() => loadLiveOthers());
+    // Keep “სხვები ამჟამად ეძებენ” fresh while the page is open.
+    const liveTimer = window.setInterval(() => {
+      void loadLiveOthers();
+    }, 12_000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(liveTimer);
     };
   }, []);
+
+  // After I search, drop that query from the “others” column immediately.
+  useEffect(() => {
+    if (!mine.length) return;
+    const blocked = new Set(
+      mine.map((q) => q.trim().toLowerCase()).filter(Boolean),
+    );
+    setOthers((prev) =>
+      prev.filter((q) => !blocked.has(q.trim().toLowerCase())),
+    );
+  }, [mine]);
 
   function openMenu() {
     setOpen(true);
