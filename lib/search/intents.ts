@@ -112,9 +112,83 @@ const INTENTS: SearchIntent[] = [
     },
     interpretation: "TypeScript — frontend და backend დეველოპერები",
   },
-  // Role titles (frontend / პროგრამისტი / დეველოპერი / developer) are NOT
-  // hardcoded here — Gemini expands them into a shared synonym cluster.
+  {
+    id: "frontend_dev",
+    triggers: [
+      "frontend",
+      "front-end",
+      "front end",
+      "frontend developer",
+      "front-end developer",
+      "front end developer",
+      "frontend dev",
+      "front-end dev",
+      "ფრონტენდ",
+      "ფრონტ-ენდ",
+      "ფრონტ ენდ",
+      "frontendi",
+    ],
+    q: "front-end",
+    fetchTerms: [
+      "front-end",
+      "frontend",
+      "front end",
+      "ფრონტენდ",
+      "ფრონტ",
+      "react",
+      "დეველოპერი",
+      "developer",
+    ],
+    preferFacets: {
+      roleFamilies: ["software_dev"],
+      skills: ["javascript", "react"],
+    },
+    interpretation: "Front-end დეველოპერი",
+  },
+  {
+    id: "pharmacist",
+    triggers: [
+      "pharmacist",
+      "pharmacists",
+      "pharmacy",
+      "ფარმაცევტი",
+      "აფთიაქი",
+      "farmacevti",
+      "farmaccevti",
+      "farmatsevti",
+      "pharmatsist",
+      "pharmatsists",
+    ],
+    q: "ფარმაცევტი",
+    fetchTerms: [
+      "ფარმაცევტი",
+      "pharmacist",
+      "pharmacists",
+      "pharmacy",
+      "აფთიაქი",
+      "აფთიაქის",
+    ],
+    preferFacets: {
+      roleFamilies: ["healthcare"],
+    },
+    interpretation: "ფარმაცევტი / აფთიაქი",
+  },
 ];
+
+/** Whole-token match — short triggers like "ts"/"js" must never substring-hit. */
+function triggerMatches(normalizedQuery: string, trigger: string): boolean {
+  if (!trigger) return false;
+  if (normalizedQuery === trigger) return true;
+  const tokens = normalizedQuery.split(/[\s,/|+.]+/).filter(Boolean);
+  if (tokens.some((tok) => tok === trigger)) return true;
+  // Short codes: token-only (pharmacists must not match "ts").
+  if (trigger.length <= 3) return false;
+  // Longer phrases: allow containment ("senior typescript engineer").
+  if (trigger.includes(" ")) return normalizedQuery.includes(trigger);
+  return tokens.some(
+    (tok) => tok.startsWith(`${trigger}-`) || tok.endsWith(`-${trigger}`),
+  );
+}
 
 /**
  * Match a dedicated intent from the raw user query.
@@ -131,11 +205,8 @@ export function matchIntent(rawQuery: string): SearchIntent | null {
     for (const trigger of intent.triggers) {
       const t = normalize(trigger);
       if (!t) continue;
+      if (!triggerMatches(n, t)) continue;
       const exact = n === t;
-      const contained =
-        n.includes(t) ||
-        n.split(/[\s,/|+]+/).some((tok) => tok === t);
-      if (!exact && !contained) continue;
       const score = t.length + (exact ? 100 : 0);
       if (score > bestLen) {
         bestLen = score;

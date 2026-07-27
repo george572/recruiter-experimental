@@ -391,7 +391,7 @@ export function stripConstraintPhrases(text: string): string {
   let out = stripTodayPhrases(text);
   out = out
     .replace(
-      /(\d{3,5})\s*(?:ლარ(?:ი|ის|ს)?|₾|gel)?\s*(?:ზევით|ზემოთ|დან|\+|from|above|over|მდე|ამდე)?/giu,
+      /(\d{3,5})\s*(?:ლარ(?:ი|ის|ს|იდან)?|₾|gel)?\s*(?:ზევით|ზემოთ|დან|\+|from|above|over|მდე|ამდე)?/giu,
       " ",
     )
     .replace(
@@ -405,6 +405,11 @@ export function stripConstraintPhrases(text: string): string {
     )
     .replace(
       /მხოლოდ|ხელფასიან(?:ი|ა)?|ხელფასი|ლარ(?:ი|ის|ს|იდან)?|₾|\bgel\b|ზევით|ზემოთ|remote|onsite|work\s*from\s*home|დისტანციურ(?:ი|ად)?|ოფისში|ადგილზე/giu,
+      " ",
+    )
+    // Generic "jobs/vacancies" fillers — never search these as a role keyword.
+    .replace(
+      /(?:^|[\s,/|])(?:ვაკანსი(?:ა|ები|ის|ას|ებიდან)?|სამუშაო(?:ები|ს)?|vakansie?[bi]*|samushao|jobs?|vacancies|vacancy|openings?|positions?)(?=$|[\s,/|])/giu,
       " ",
     );
 
@@ -487,7 +492,7 @@ function extractLocalFacets(text: string): Partial<SmartJobFilters> {
 
   // "2000 ლარის ზევით" / "2000 ლარიდან" / "2000+" / "from 2000"
   const minAbove = raw.match(
-    /(\d{3,5})\s*(?:ლარ(?:ი|ის|ს)?|₾|gel)?\s*(?:ზევით|ზემოთ|დან|\+|from|above|over)/i,
+    /(\d{3,5})\s*(?:ლარიდან|(?:ლარ(?:ი|ის|ს)?|₾|gel)?\s*(?:ზევით|ზემოთ|დან|\+|from|above|over))/i,
   );
   const minFrom = raw.match(
     /(?:მინიმუმ|დან|from|above|over|at\s*least)\s*(\d{3,5})/i,

@@ -20,6 +20,16 @@ const CITY_LATIN: Record<string, string> = {
   poti: "ფოთი",
 };
 
+/** Whole-word overrides where phonetic latin→KA is wrong or lossy. */
+const WORD_LEXICON: Record<string, string> = {
+  pharmacist: "ფარმაცევტი",
+  pharmacists: "ფარმაცევტი",
+  pharmacy: "აფთიაქი",
+  farmacevti: "ფარმაცევტი",
+  farmaccevti: "ფარმაცევტი",
+  farmatsevti: "ფარმაცევტი",
+};
+
 /** Digraphs / trigraphs first (longest match). */
 const DIGRAPHS: Array<[string, string]> = [
   ["tch", "ჭ"],
@@ -123,6 +133,7 @@ function isLikelyEnglishSkill(token: string): boolean {
 export function transliterateToken(token: string): string {
   const lower = token.toLowerCase();
   if (CITY_LATIN[lower]) return CITY_LATIN[lower];
+  if (WORD_LEXICON[lower]) return WORD_LEXICON[lower];
 
   let i = 0;
   let out = "";
